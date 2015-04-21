@@ -1,4 +1,6 @@
 #region Using Statements
+
+using Gearset.Components.Profiler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -216,6 +218,12 @@ namespace Gearset
         /// </summary>
         internal Finder Finder { get; private set; }
 #endif
+
+        /// <summary>
+        /// Code profiler.
+        /// </summary>
+        internal Profiler Profiler { get; private set; }
+
         /// <summary>
         /// Gearset settings
         /// </summary>
@@ -367,6 +375,9 @@ namespace Gearset
 
             this.Labeler = new Labeler();
             this.Components.Add(Labeler);
+
+            this.Profiler = new Profiler();
+            this.Components.Add(Profiler);
 
             game.GraphicsDevice.DeviceReset += new EventHandler<EventArgs>(GraphicsDevice_DeviceReset);
         }
