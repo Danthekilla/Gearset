@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 
 namespace Gearset.Components.Profiler
 {
@@ -16,6 +17,12 @@ namespace Gearset.Components.Profiler
         public double Height { get; internal set; }
 
         [InspectorIgnore]
+        public Vector2 PerformaceGraphPosition { get; internal set; }
+
+        [InspectorIgnore]
+        public Vector2 PerformaceGraphSize { get; internal set; }
+
+        [InspectorIgnore]
         public List<String> HiddenStreams { get; internal set; }
 
         public ProfilerConfig()
@@ -27,6 +34,8 @@ namespace Gearset.Components.Profiler
             Height = 340;
 
             HiddenStreams = new List<string>();
+
+            PerformaceGraphSize = new Vector2(100, 60);
         }
     }
 }

@@ -222,7 +222,7 @@ namespace Gearset
         /// <summary>
         /// Code profiler.
         /// </summary>
-        internal Profiler Profiler { get; private set; }
+        public Profiler Profiler { get; private set; }
 
         /// <summary>
         /// Gearset settings

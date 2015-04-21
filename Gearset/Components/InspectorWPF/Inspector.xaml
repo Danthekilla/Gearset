@@ -438,7 +438,7 @@
                             <Button DockPanel.Dock="Left" Name="ResetPlotsPositionsButton" ToolTip="Resets all plots to their original positions and sizes" Click="ResetPlotsPositionsButton_Click">Reset Positions</Button>
                         </DockPanel>
                     </Border>
-                    <ListBox Grid.Row="1" Name="plots" Style="{StaticResource plotsListBoxStyle}" ItemsSource="{Binding Mode=OneWay}" ItemTemplate="{StaticResource overlaidPlotTemplate}"/>
+                    <ListBox Grid.Row="1" Name="plots" Style="{StaticResource plotsListBoxStyle}" ItemsSource="{Binding Mode=OneWay}" ItemTemplate="{StaticResource overlaidPlotTemplate}" DataContext="{Binding}" />
                 </Grid>
             </TabItem>
             <TabItem Header="Methods">

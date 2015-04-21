@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using System.Threading;
 using System.Windows;
 using Microsoft.Xna.Framework;
@@ -12,10 +11,10 @@ namespace Gearset.Components.Profiler
     {
         internal ProfilerWindow Window { get; private set; }
 
-        readonly TimeRuler _timeRuler;
-        readonly PerformanceGraph _performanceGraph;
+        public TimeRuler TimeRuler { get; private set; }
+        public PerformanceGraph PerformanceGraph { get; private set; }
 
-        private bool locationJustChanged;
+        private bool _locationJustChanged;
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
@@ -159,6 +158,7 @@ namespace Gearset.Components.Profiler
         // Dictionary that maps from marker name to marker id.
         readonly Dictionary<string, int> _markerNameToIdMap = new Dictionary<string, int>();
 
+        private InternalLabeler _internalLabeler = new InternalLabeler();
 
         // You want to call StartFrame at beginning of Game.Update method.
         // But Game.Update gets calls multiple time when game runs slow in fixed time step mode.
@@ -187,12 +187,22 @@ namespace Gearset.Components.Profiler
             Window.LocationChanged += ProfilerLocationChanged;
             Window.SizeChanged += ProfilerSizeChanged;
 
+            Children.Add(_internalLabeler);
+
             _logs = new FrameLog[2];
             for (var i = 0; i < _logs.Length; ++i)
                 _logs[i] = new FrameLog();
 
-            _timeRuler = new TimeRuler(TargetSampleFrames = 1, Vector2.Zero, new Vector2(GearsetResources.Device.Viewport.Width, 10));
-            _performanceGraph = new PerformanceGraph(TargetSampleFrames = 1, new Vector2(0, 11), new Vector2(GearsetResources.Device.Viewport.Width, 10000/60.0f ));
+            TimeRuler = new TimeRuler(TargetSampleFrames = 1, Vector2.Zero, new Vector2(GearsetResources.Device.Viewport.Width, 10));
+            PerformanceGraph = new PerformanceGraph(TargetSampleFrames = 1, Config.PerformaceGraphPosition, Config.PerformaceGraphSize);
+            PerformanceGraph.Dragged += (object sender, ref Vector2 args) => { 
+                Config.PerformaceGraphPosition = PerformanceGraph.Position; 
+            };
+
+            PerformanceGraph.ScaleNob.Dragged += (object sender, ref Vector2 args) => { 
+                Config.PerformaceGraphSize = PerformanceGraph.Size; 
+            };
+            
         }
 
         void ProfilerIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -208,12 +218,12 @@ namespace Gearset.Components.Profiler
 
         void ProfilerSizeChanged(object sender, SizeChangedEventArgs e)
         {
-            locationJustChanged = true;
+            _locationJustChanged = true;
         }
 
         void ProfilerLocationChanged(object sender, EventArgs e)
         {
-            locationJustChanged = true;
+            _locationJustChanged = true;
         }
 
         /// <summary>
@@ -445,9 +455,9 @@ namespace Gearset.Components.Profiler
 
         public override void Update(GameTime gameTime)
         {
-            if (locationJustChanged)
+            if (_locationJustChanged)
             {
-                locationJustChanged = false;
+                _locationJustChanged = false;
                 Config.Top = Window.Top;
                 Config.Left = Window.Left;
                 Config.Width = Window.Width;
@@ -464,8 +474,11 @@ namespace Gearset.Components.Profiler
             // Reset update count.
             Interlocked.Exchange(ref _updateCount, 0);
 
-            _timeRuler.Draw(_prevLog);
-            _performanceGraph.Draw(_prevLog);
+            if (TimeRuler.Visible)
+                TimeRuler.Draw(_prevLog);
+
+            if (PerformanceGraph.Visible)
+                PerformanceGraph.Draw(_internalLabeler, _prevLog);
         }
     }
 }

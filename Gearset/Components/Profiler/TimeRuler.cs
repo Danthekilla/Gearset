@@ -17,6 +17,31 @@ namespace Gearset.Components.Profiler
 #else
     {
 #endif
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this <see cref="TimeRuler"/> is visible.
+        /// </summary>
+        /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
+        public bool Visible
+        {
+            get
+            {
+                return visible;
+            }
+            set
+            {
+                visible = value;
+                if (VisibleChanged != null)
+                    VisibleChanged(this, EventArgs.Empty);
+#if WINDOWS
+                if (PropertyChanged != null)
+                    PropertyChanged(this, new PropertyChangedEventArgs("Visible"));
+#endif
+            }
+        }
+        private bool visible;
+
+        internal event EventHandler VisibleChanged;
     
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
@@ -56,6 +81,7 @@ namespace Gearset.Components.Profiler
 
         internal TimeRuler(int sampleFrames, Vector2 position, Vector2 size) : base(position, size)
         {
+            visible = true;
             _sampleFrames = sampleFrames;
         }
 

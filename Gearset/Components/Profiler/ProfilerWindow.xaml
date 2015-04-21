@@ -62,7 +62,7 @@
 
         <!--Tool Bar-->
         <DockPanel Grid.Row="0" Grid.ColumnSpan="3">
-            <Button DockPanel.Dock="Right" Name="CloseButton" Width="16" Height="16" Click="Close_Click">
+            <Button DockPanel.Dock="Right" Name="CloseButton" Width="16" Height="16" Click="CloseClick">
                 <Image Width="7" Height="7">
                     <Image.Style>
                         <Style TargetType="Image">
@@ -76,7 +76,7 @@
                     </Image.Style>
                 </Image>
             </Button>
-            <Button DockPanel.Dock="Right" Name="MaximizeButton" Width="16" Height="16" Click="Maximize_Click">
+            <Button DockPanel.Dock="Right" Name="MaximizeButton" Width="16" Height="16" Click="MaximizeClick">
                 <Image Width="9" Height="7">
                     <Image.Style>
                         <Style TargetType="Image">
@@ -94,8 +94,8 @@
 
             <!--Left side-->
             <Image DockPanel.Dock="Left" Width="12" Margin="0 0 2 0" Source="../Common/icon_title.png"/>
-            <TextBlock DockPanel.Dock="Left" FontSize="12" Foreground="White" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">Profiler</TextBlock>
-            <Rectangle Fill="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
+            <TextBlock DockPanel.Dock="Left" FontSize="12" Foreground="White" MouseLeftButtonDown="TitleBarMouseLeftButtonDown">Profiler</TextBlock>
+            <Rectangle Fill="Transparent" MouseLeftButtonDown="TitleBarMouseLeftButtonDown"/>
         </DockPanel>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -108,7 +108,7 @@
             </Grid.ColumnDefinitions>
 
             <!--<Rectangle Fill="Red" Grid.Column="1"/>-->
-            <GridSplitter Grid.Column="1" Background="{DynamicResource highlight1}" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+            <GridSplitter Grid.Column="1" Background="{DynamicResource highlight1}" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch" />
 
             <!-- Streams -->
             <DockPanel Grid.Column="0" Grid.Row="1">
@@ -146,32 +146,7 @@
                     </GroupStyle>
                 </ListView.GroupStyle>
             </ListView>
-
         </Grid>
-        <!--<ListView Name="LogListBox" ItemsSource="{Binding}" Background="#444" Foreground="#eee" Grid.Column="2">
-            <ListView.View>
-                <GridView AllowsColumnReorder="true"
-              ColumnHeaderToolTip="Profiler">
-
-                    <GridViewColumn DisplayMemberBinding=
-                          "{Binding Path=UpdateNumber}" 
-                      Header="Update #" Width="50"/>
-
-                    <GridViewColumn
-                      Header="Log" Width="Auto">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Path=DataContext.Content, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListViewItem}}}"
-                                               Foreground="{Binding DataContext.Stream.Color, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListViewItem}}}"
-                                               HorizontalAlignment="Stretch" MinWidth="200"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>-->
     </Grid>
 
 </Window>

@@ -18,6 +18,31 @@ namespace Gearset.Components.Profiler
 #else
     {
 #endif
+        /// <summary>
+        /// Gets or sets a value indicating whether this <see cref="TimeRuler"/> is visible.
+        /// </summary>
+        /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
+        public bool Visible
+        {
+            get
+            {
+                return _visible;
+            }
+            set
+            {
+                _visible = value;
+                if (VisibleChanged != null)
+                    VisibleChanged(this, EventArgs.Empty);
+#if WINDOWS
+                if (PropertyChanged != null)
+                    PropertyChanged(this, new PropertyChangedEventArgs("Visible"));
+#endif
+            }
+        }
+        private bool _visible;
+
+        internal event EventHandler VisibleChanged;
+
         const int MaxFrames = 40;
         private readonly Queue<float> _timings = new Queue<float>(MaxFrames);
 
@@ -29,13 +54,21 @@ namespace Gearset.Components.Profiler
                 _timings.Enqueue(0);
         }
 
-        int c;
-        internal void Draw(Profiler.FrameLog frameLog)
+        int _c;
+        internal void Draw(InternalLabeler labeler, Profiler.FrameLog frameLog)
         {
-            c++;
-            if (c >= 3)
+            DrawBorderLines(Color.Gray);//, _lineDrawer);
+            //if (TitleBar.IsMouseOver)
+            //    TitleBar.DrawBorderLines(Color.White);//, _lineDrawer);
+            if (ScaleNob.IsMouseOver)
+                ScaleNob.DrawBorderLines(Color.Gray);//, _lineDrawer);
+
+            labeler.ShowLabel("__performanceGraph", Position + new Vector2(0, -12), "Performance Graph");
+            
+            _c++;
+            if (_c >= 10)
             {
-                c = 0;
+                _c = 0;
 
                 if (_timings.Count == MaxFrames)
                 {
@@ -54,7 +87,7 @@ namespace Gearset.Components.Profiler
             var msToPs = Height / frameSpan;
 
 
-            const int barWidth = 30;
+            var barWidth = 2 * Width / MaxFrames;
             var y = Position.Y + Size.Y;
             var position = new Vector2(Position.X, y);
             var s = new Vector2(barWidth, msToPs);

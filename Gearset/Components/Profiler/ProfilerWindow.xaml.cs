@@ -14,10 +14,10 @@ namespace Gearset.Components.Profiler
         {
             InitializeComponent();
 
-            Closing += ProfilerWindow_Closing;
+            Closing += ProfilerWindowClosing;
         }
 
-        public void ProfilerWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        public void ProfilerWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             e.Cancel = true;
             Hide();
@@ -28,17 +28,17 @@ namespace Gearset.Components.Profiler
             GearsetResources.Console.SaveLogToFile();
         }
 
-        public void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        public void TitleBarMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             DragMove();
         }
 
-        public void Close_Click(object sender, RoutedEventArgs e)
+        public void CloseClick(object sender, RoutedEventArgs e)
         {
             Hide();
         }
 
-        public void Maximize_Click(object sender, RoutedEventArgs e)
+        public void MaximizeClick(object sender, RoutedEventArgs e)
         {
             if (WindowState == WindowState.Maximized)
                 WindowState = WindowState.Normal;
@@ -48,17 +48,17 @@ namespace Gearset.Components.Profiler
 
         private void Solo_Click(object sender, RoutedEventArgs e)
         {
- 
+
         }
 
         private void DisableAllButton_Click(object sender, RoutedEventArgs e)
         {
-       
+            GearsetResources.Console.Profiler.PerformanceGraph.Visible = !GearsetResources.Console.Profiler.PerformanceGraph.Visible;
         }
 
         private void EnableAllButton_Click(object sender, RoutedEventArgs e)
         {
-
+            GearsetResources.Console.Profiler.TimeRuler.Visible = !GearsetResources.Console.Profiler.TimeRuler.Visible;
         }
     }
 
