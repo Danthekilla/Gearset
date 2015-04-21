@@ -12,14 +12,12 @@ namespace Gearset.Components.Profiler
     {
         internal ProfilerWindow Window { get; private set; }
 
+        readonly TimeRuler _timeRuler;
+        readonly PerformanceGraph _performanceGraph;
+
         private bool locationJustChanged;
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
-
-        /// <summary>
-        /// Height(in pixels) of bar.
-        /// </summary>
-        const int BarHeight = 8;
 
         /// <summary>
         /// Gets/Set log display or no.
@@ -65,19 +63,9 @@ namespace Gearset.Components.Profiler
         const int LogSnapDuration = 120;
 
         /// <summary>
-        /// Padding(in pixels) of bar.
-        /// </summary>
-        const int BarPadding = 2;
-
-        /// <summary>
-        /// Delay frame count for auto display frame adjustment.
-        /// </summary>
-        const int AutoAdjustDelay = 30;
-
-        /// <summary>
         /// Marker structure.
         /// </summary>
-        private struct Marker
+        internal struct Marker
         {
             public int MarkerId;
             public float BeginTime;
@@ -88,7 +76,7 @@ namespace Gearset.Components.Profiler
         /// <summary>
         /// Collection of markers.
         /// </summary>
-        private class MarkerCollection
+        internal class MarkerCollection
         {
             // Marker collection.
             public readonly Marker[] Markers = new Marker[MaxSamples];
@@ -102,7 +90,7 @@ namespace Gearset.Components.Profiler
         /// <summary>
         /// Frame logging information.
         /// </summary>
-        private class FrameLog
+        internal class FrameLog
         {
             public readonly MarkerCollection[] Bars;
 
@@ -171,14 +159,6 @@ namespace Gearset.Components.Profiler
         // Dictionary that maps from marker name to marker id.
         readonly Dictionary<string, int> _markerNameToIdMap = new Dictionary<string, int>();
 
-        // Display frame adjust counter.
-        int _frameAdjust;
-
-        // Current display frame count.
-        int _sampleFrames;
-
-        // Marker log string.
-        readonly StringBuilder _logString = new StringBuilder(512);
 
         // You want to call StartFrame at beginning of Game.Update method.
         // But Game.Update gets calls multiple time when game runs slow in fixed time step mode.
@@ -197,24 +177,25 @@ namespace Gearset.Components.Profiler
                 Height = Config.Height
             };
 
-            Window.IsVisibleChanged += profiler_IsVisibleChanged;
+            Window.IsVisibleChanged += ProfilerIsVisibleChanged;
 
             WindowHelper.EnsureOnScreen(Window);
 
             if (Config.Visible)
                 Window.Show();
 
-            Window.LocationChanged += profiler_LocationChanged;
-            Window.SizeChanged += profiler_SizeChanged;
+            Window.LocationChanged += ProfilerLocationChanged;
+            Window.SizeChanged += ProfilerSizeChanged;
 
             _logs = new FrameLog[2];
             for (var i = 0; i < _logs.Length; ++i)
                 _logs[i] = new FrameLog();
 
-            _sampleFrames = TargetSampleFrames = 1;
+            _timeRuler = new TimeRuler(TargetSampleFrames = 1, Vector2.Zero, new Vector2(GearsetResources.Device.Viewport.Width, 10));
+            _performanceGraph = new PerformanceGraph(TargetSampleFrames = 1, new Vector2(0, 11), new Vector2(GearsetResources.Device.Viewport.Width, 10000/60.0f ));
         }
 
-        void profiler_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        void ProfilerIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             Config.Visible = Window.IsVisible;
         }
@@ -225,12 +206,12 @@ namespace Gearset.Components.Profiler
                 Window.Visibility = Visible ? Visibility.Visible : Visibility.Hidden;
         }
 
-        void profiler_SizeChanged(object sender, SizeChangedEventArgs e)
+        void ProfilerSizeChanged(object sender, SizeChangedEventArgs e)
         {
             locationJustChanged = true;
         }
 
-        void profiler_LocationChanged(object sender, EventArgs e)
+        void ProfilerLocationChanged(object sender, EventArgs e)
         {
             locationJustChanged = true;
         }
@@ -483,85 +464,8 @@ namespace Gearset.Components.Profiler
             // Reset update count.
             Interlocked.Exchange(ref _updateCount, 0);
 
-            var width = GearsetResources.Device.Viewport.Width;
-
-            // Adjust size and position based of number of bars we should draw.
-            var height = 0;
-            float maxTime = 0;
-            foreach (var bar in _prevLog.Bars)
-            {
-                if (bar.MarkCount <= 0)
-                    continue;
-
-                height += BarHeight + BarPadding * 2;
-                maxTime = Math.Max(maxTime, bar.Markers[bar.MarkCount - 1].EndTime);
-            }
-
-            var size = new Vector2(width, height);
-
-            // Auto display frame adjustment. If the entire process of frame doesn't finish in less than 16.6ms
-            // then it will adjust display frame duration as 33.3ms.
-            const float frameSpan = 1.0f / 60.0f * 1000f;
-            var sampleSpan = _sampleFrames * frameSpan;
-
-            if (maxTime > sampleSpan)
-                _frameAdjust = Math.Max(0, _frameAdjust) + 1;
-            else
-                _frameAdjust = Math.Min(0, _frameAdjust) - 1;
-
-            if (Math.Abs(_frameAdjust) > AutoAdjustDelay)
-            {
-                _sampleFrames = Math.Min(MaxSampleFrames, _sampleFrames);
-                _sampleFrames = Math.Max(TargetSampleFrames, (int)(maxTime / frameSpan) + 1);
-
-                _frameAdjust = 0;
-            }
-
-            // Compute factor that converts from ms to pixel.
-            var msToPs = width / sampleSpan;
-
-            size.Y = height;
-            var position = Position;
-            GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
-
-            // Draw markers for each bars.
-            var s = new Vector2(0, BarHeight);
-            var y = position.Y;
-            foreach (var bar in _prevLog.Bars)
-            {
-                position.Y = y + BarPadding;
-                if (bar.MarkCount > 0)
-                {
-                    for (var j = 0; j < bar.MarkCount; ++j)
-                    {
-                        var bt = bar.Markers[j].BeginTime;
-                        var et = bar.Markers[j].EndTime;
-                        var sx = (int)(Position.X + bt * msToPs);
-                        var ex = (int)(Position.X + et * msToPs);
-                        position.X = sx;
-                        s.X = Math.Max(ex - sx, 1);
-                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, bar.Markers[j].Color, bar.Markers[j].Color);
-                    }
-                }
-
-                y += BarHeight + BarPadding;
-            }
-
-            // Draw grid lines (each one represents 1 ms of time)
-            position = Position;
-            s = new Vector2(1, height);
-            for (var t = 1.0f; t < sampleSpan; t += 1.0f)
-            {
-                position.X = (int)(Position.X + t * msToPs);
-                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.White, Color.White);
-            }
-
-            // Draw frame grid.
-            for (var i = 0; i <= _sampleFrames; ++i)
-            {
-                position.X = (int)(Position.X + frameSpan * i * msToPs);
-                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.Green, Color.Green);
-            }
+            _timeRuler.Draw(_prevLog);
+            _performanceGraph.Draw(_prevLog);
         }
     }
 }

@@ -199,7 +199,7 @@ namespace Gearset.Components.Data
 
         public override void Update(GameTime gameTime)
         {
-            
+  
         }
 
         public override void Draw(GameTime gameTime)

@@ -142,6 +142,8 @@
     <Compile Include="Components\Common\NumericSpinner.xaml.cs">
       <DependentUpon>NumericSpinner.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Components\Profiler\PerformanceGraph.cs" />
+    <Compile Include="Components\Profiler\TimeRuler.cs" />
     <Compile Include="Components\Profiler\Profiler.cs" />
     <Compile Include="Components\Profiler\ProfilerConfig.cs" />
     <Compile Include="Components\Profiler\ProfilerWindow.xaml.cs">
