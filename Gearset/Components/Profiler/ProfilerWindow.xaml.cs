@@ -1,5 +1,4 @@
-﻿using System;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 
 namespace Gearset.Components.Profiler
@@ -17,8 +16,6 @@ namespace Gearset.Components.Profiler
 
             Closing += ProfilerWindow_Closing;
         }
-
-        internal event EventHandler<SoloRequestedEventArgs> SoloRequested;
 
         public void ProfilerWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -51,28 +48,18 @@ namespace Gearset.Components.Profiler
 
         private void Solo_Click(object sender, RoutedEventArgs e)
         {
-            if (SoloRequested != null)
-                SoloRequested(this, new SoloRequestedEventArgs((StreamItem)((FrameworkElement)e.OriginalSource).DataContext));
+ 
         }
 
         private void DisableAllButton_Click(object sender, RoutedEventArgs e)
         {
-            GearsetResources.Console.Profiler.DisableAllStreams();
+       
         }
 
         private void EnableAllButton_Click(object sender, RoutedEventArgs e)
         {
-            GearsetResources.Console.Profiler.EnableAllStreams();
+
         }
     }
 
-    internal class SoloRequestedEventArgs : EventArgs
-    {
-        internal StreamItem StreamItem { get; private set; }
-
-        public SoloRequestedEventArgs(StreamItem item)
-        {
-            StreamItem = item;
-        }
-    }
 }

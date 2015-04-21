@@ -29,11 +29,12 @@ namespace Gearset.Components
             for (int i = 0; i < textureSize; i++)
             {
                 byte shade = (byte)random.Next(100, 150);
-                noise[i].R = shade;
-                noise[i].G = shade;
-                noise[i].B = shade;
+                noise[i].R = 255;// shade;
+                noise[i].G = 255;// shade;
+                noise[i].B = 255;// shade;
                 noise[i].A = 255;
             }
+            //noiseTexture.SetData<Color>(noise);
             noiseTexture.SetData<Color>(noise);
 
             wrapSamplerState = new SamplerState();

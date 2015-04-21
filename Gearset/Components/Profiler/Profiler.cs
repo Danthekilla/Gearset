@@ -1,96 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Text;
-using Gearset.Components;
-using Gearset;
-using Microsoft.Xna.Framework.Input;
+using System.Threading;
 using System.Windows;
-using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Windows.Data;
-using System.ComponentModel;
-using System.Windows.Media;
-using System.Windows.Controls;
+using Microsoft.Xna.Framework;
 
 namespace Gearset.Components.Profiler
 {
-    public class LogItem
-    {
-        /// <summary>
-        /// The background color to use for this Log, it is the same for 
-        /// items in the same update.
-        /// </summary>
-        /// <value>The color.</value>
-        public Brush Color { get; set; }
 
-        /// <summary>
-        /// The number of the update where this log was generated
-        /// </summary>
-        public int UpdateNumber { get; set; }
-
-        /// <summary>
-        /// The name of the string where this logItem belongs.
-        /// </summary>
-        public StreamItem Stream { get; set; }
-
-        /// <summary>
-        /// The actual contents of the log
-        /// </summary>
-        public String Content { get; set; }
-    }
-
-    public class StreamItem : IComparable<StreamItem>, INotifyPropertyChanged
-    {
-        public String Name { get; set; }
-        public Boolean Enabled { get { return enabled; } set { enabled = value; OnPropertyChanged("Enabled"); } }
-
-        public Brush Color { get; set; }
-
-        private void OnPropertyChanged(string p)
-        {
-            if (PropertyChanged != null)
-                PropertyChanged(this, new PropertyChangedEventArgs(p));
-        }
-        private Boolean enabled = true;
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        public int CompareTo(StreamItem other)
-        {
-            return String.Compare(Name, other.Name, true, CultureInfo.InvariantCulture);
-        }
-    }
 
     public class Profiler : Gear
     {
         internal ProfilerWindow Window { get; private set; }
-        private KeyboardState prevKbs;
 
-        private StreamItem defaultStream;
-
-        private SolidColorBrush[] colors = new SolidColorBrush[] { 
-            new SolidColorBrush(Color.FromArgb(255, 200, 200, 200)),
-            new SolidColorBrush(Color.FromArgb(255, 128, 200, 200)),
-            new SolidColorBrush(Color.FromArgb(255, 200, 200, 128)),
-            new SolidColorBrush(Color.FromArgb(255, 200, 128, 200)),
-            new SolidColorBrush(Color.FromArgb(255, 128, 128, 200)),
-            new SolidColorBrush(Color.FromArgb(255, 128, 200, 128)),
-            new SolidColorBrush(Color.FromArgb(255, 200, 128, 128)),
-            new SolidColorBrush(Color.FromArgb(255, 150, 110, 110)),
-            new SolidColorBrush(Color.FromArgb(255, 110, 150, 110)),
-            new SolidColorBrush(Color.FromArgb(255, 110, 110, 150)),
-            new SolidColorBrush(Color.FromArgb(255, 150, 150, 110)),
-            new SolidColorBrush(Color.FromArgb(255, 150, 110, 150)),
-            new SolidColorBrush(Color.FromArgb(255, 110, 150, 150)),
-        };
-
-        private int currentColor;
-
-        internal ObservableCollection<StreamItem> Streams;
-        internal FixedLengthQueue<LogItem> LogItems;
-        internal FixedLengthQueue<LogItem> LogItemsOld;
-        internal ICollectionView filteredView;
-        private ScrollViewer scrollViewer;
         private bool locationJustChanged;
 
         //private Brush[] BackBrushes = new Brush[2];
@@ -98,14 +21,7 @@ namespace Gearset.Components.Profiler
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
-        {
-            // Create the back-end collections
-            Streams = new ObservableCollection<StreamItem>();
-            LogItems = new FixedLengthQueue<LogItem>(500);
-            LogItemsOld = new FixedLengthQueue<LogItem>(10000);
-            //LogItems.DequeueTarget = LogItemsOld;
-            Streams.Add(defaultStream = new StreamItem { Name = "Default", Enabled = true, Color = colors[currentColor++] });
-            
+        {            
             // Create the window.
             Window = new ProfilerWindow();
 
@@ -113,36 +29,22 @@ namespace Gearset.Components.Profiler
             Window.Left = Config.Left;
             Window.Width = Config.Width;
             Window.Height = Config.Height;
-            Window.IsVisibleChanged += new DependencyPropertyChangedEventHandler(profiler_IsVisibleChanged);
-            Window.SoloRequested += new EventHandler<SoloRequestedEventArgs>(profiler_SoloRequested);
+            Window.IsVisibleChanged += profiler_IsVisibleChanged;
 
             WindowHelper.EnsureOnScreen(Window);
 
             if (Config.Visible)
                 Window.Show();
 
-            filteredView = CollectionViewSource.GetDefaultView(LogItems);
-            filteredView.Filter = (a) => ((LogItem)a).Stream.Enabled;
-            filteredView.GroupDescriptions.Add(new PropertyGroupDescription("UpdateNumber"));
-            Window.LogListBox.DataContext = filteredView;
-            Window.StreamListBox.DataContext = Streams;
+            Window.LocationChanged += profiler_LocationChanged;
+            Window.SizeChanged += profiler_SizeChanged;
 
-            Window.LocationChanged += new EventHandler(profiler_LocationChanged);
-            Window.SizeChanged += new SizeChangedEventHandler(profiler_SizeChanged);
+            //Initialize Parameters.
+            _logs = new FrameLog[2];
+            for (var i = 0; i < _logs.Length; ++i)
+                _logs[i] = new FrameLog();
 
-            scrollViewer = GetDescendantByType(Window.LogListBox, typeof(ScrollViewer)) as ScrollViewer;
-
-        }
-
-        void profiler_SoloRequested(object sender, SoloRequestedEventArgs e)
-        {
-            foreach (StreamItem stream in Streams)
-            {
-                if (stream != e.StreamItem)
-                    stream.Enabled = false;
-                else
-                    stream.Enabled = true;
-            }
+            _sampleFrames = TargetSampleFrames = 1;
         }
 
         void profiler_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -166,10 +68,8 @@ namespace Gearset.Components.Profiler
             locationJustChanged = true;
         }
 
-        public override void Update(Microsoft.Xna.Framework.GameTime gameTime)
+        public override void Update(GameTime gameTime)
         {
-            var kbs = Keyboard.GetState();
-
             if (locationJustChanged)
             {
                 locationJustChanged = false;
@@ -178,210 +78,532 @@ namespace Gearset.Components.Profiler
                 Config.Width = Window.Width;
                 Config.Height = Window.Height;
             }
-
-            if (kbs.IsKeyDown(Keys.LeftControl) && kbs.IsKeyDown(Keys.F7) && prevKbs.IsKeyUp(Keys.F7))
-            {
-                if (Window.IsVisible)
-                    Window.Hide();
-                else
-                {
-                    Window.Show();
-                }
-            }
-            prevKbs = kbs;
         }
 
-        public void EnableAllStreams()
+        public override void Draw(GameTime gameTime)
         {
-            foreach (StreamItem stream in Streams)
-                stream.Enabled = true;
-        }
-
-        public void DisableAllStreams()
-        {
-            foreach (StreamItem stream in Streams)
-                stream.Enabled = false;
-        }
-
-        /// <summary>
-        /// Shows a dialog asking for a filename and saves the log file.
-        /// </summary>
-        public void SaveLogToFile()
-        {
-            // Configure save file dialog box
-            Microsoft.Win32.SaveFileDialog dlg = new Microsoft.Win32.SaveFileDialog();
-            dlg.FileName = ""; // Default file name
-            dlg.DefaultExt = ".log"; // Default file extension
-            dlg.Filter = "Log files (.log)|*.log"; // Filter files by extension
-
-            // Show save file dialog box
-            Nullable<bool> result = dlg.ShowDialog();
-
-            // Process save file dialog box results
-            if (result != true)
-            {
+            // Just to make sure we're only doing this one per frame.
+            if (GearsetResources.CurrentRenderPass != RenderPass.BasicEffectPass)
                 return;
+
+            var width = GearsetResources.Device.Viewport.Width;
+
+            var position = new Vector2(0, 0);
+            
+
+            // Reset update count.
+            Interlocked.Exchange(ref _updateCount, 0);
+
+            // Adjust size and position based of number of bars we should draw.
+            var height = 0;
+            float maxTime = 0;
+            foreach (var bar in _prevLog.Bars)
+            {
+                if (bar.MarkCount <= 0)
+                    continue;
+
+                height += BarHeight + BarPadding * 2;
+                maxTime = Math.Max(maxTime, bar.Markers[bar.MarkCount - 1].EndTime);
             }
 
-            // Generate the log file.
-            SaveLogToFile(dlg.FileName);
-        }
+            var size = new Vector2(width, height);
 
-        /// <summary>
-        /// Saves the log to the specified file.
-        /// </summary>
-        /// <param name="filename">Name of the file to save the log (usually ending in .log)</param>
-        public void SaveLogToFile(string filename)
-        {
-            // Generate the log file.
-            using (System.IO.TextWriter t = new System.IO.StreamWriter(filename))
+            // Auto display frame adjustment.
+            // For example, if the entire process of frame doesn't finish in less than 16.6ms
+            // thin it will adjust display frame duration as 33.3ms.
+            const float frameSpan = 1.0f / 60.0f * 1000f;
+            var sampleSpan = _sampleFrames * frameSpan;
+
+            if (maxTime > sampleSpan)
+                _frameAdjust = Math.Max(0, _frameAdjust) + 1;
+            else
+                _frameAdjust = Math.Min(0, _frameAdjust) - 1;
+
+            if (Math.Abs(_frameAdjust) > AutoAdjustDelay)
             {
-                int updateNumber = -1;
-                int maxStreamNameSize = 0;
-                foreach (var item in Streams)
-                    if (item.Name.Length > maxStreamNameSize)
-                        maxStreamNameSize = item.Name.Length;
-                // Store old items (not shown in the Profiler window).
-                foreach (var item in LogItemsOld)
+                _sampleFrames = Math.Min(MaxSampleFrames, _sampleFrames);
+                _sampleFrames = Math.Max(TargetSampleFrames, (int)(maxTime / frameSpan) + 1);
+
+                _frameAdjust = 0;
+            }
+
+            // Compute factor that converts from ms to pixel.
+            var msToPs = width / sampleSpan;
+
+            // Draw start position.
+            var startY = (int)position.Y;// -(height - BarHeight);
+
+            // Current y position.
+            var y = startY;
+
+            // Draw transparency background.
+            //var rc = new Rectangle((int)position.X, y, width, height);
+            //spriteBatch.Draw(texture, rc, new Color(0, 0, 0, 128));
+
+            position.Y = y;
+
+            size.Y = height;
+            GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
+
+
+            // Draw markers for each bars.
+            var pos = position; // new Rectangle((int)position.X, startY, 1, height);
+            var s = new Vector2(0, BarHeight);
+            foreach (var bar in _prevLog.Bars)
+            {
+                pos.Y = y + BarPadding;
+                if (bar.MarkCount > 0)
                 {
-                    if (item.UpdateNumber > updateNumber)
+                    for (var j = 0; j < bar.MarkCount; ++j)
                     {
-                        t.WriteLine("Update " + item.UpdateNumber);
-                        updateNumber = item.UpdateNumber;
+                        var bt = bar.Markers[j].BeginTime;
+                        var et = bar.Markers[j].EndTime;
+                        var sx = (int)(position.X + bt * msToPs);
+                        var ex = (int)(position.X + et * msToPs);
+                        pos.X = sx;
+                        s.X = Math.Max(ex - sx, 1);
+                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(pos, pos + s, bar.Markers[j].Color, bar.Markers[j].Color);
                     }
-                    t.WriteLine(item.Stream.Name.PadLeft(maxStreamNameSize) + " | " + item.Content);
                 }
-                // Store last n items (shown in the profiler window).
-                foreach (var item in LogItems)
+
+                y += BarHeight + BarPadding;
+            }
+
+            // Draw grid lines.
+            // Each grid represents ms.
+            pos = position; // new Rectangle((int)position.X, startY, 1, height);
+            s = new Vector2(1, height);
+            for (var t = 1.0f; t < sampleSpan; t += 1.0f)
+            {
+                pos.X = (int)(position.X + t * msToPs);
+                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(pos, pos + s, Color.Gray, Color.Gray);
+            }
+
+            // Draw frame grid.
+            for (var i = 0; i <= _sampleFrames; ++i)
+            {
+                pos.X = (int)(position.X + frameSpan * i * msToPs);
+                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(pos, pos + s, Color.White, Color.White);
+            }
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Height(in pixels) of bar.
+        /// </summary>
+        const int BarHeight = 8;
+
+        /// <summary>
+        /// Gets/Set log display or no.
+        /// </summary>
+        public bool ShowLog { get; set; }
+
+        /// <summary>
+        /// Gets/Sets target sample frames.
+        /// </summary>
+        public int TargetSampleFrames { get; set; }
+
+        /// <summary>
+        /// Gets/Sets TimeRuler rendering position.
+        /// </summary>
+        public Vector2 Position { get; set; }
+
+        /// <summary>
+        /// Gets/Sets timer ruler width.
+        /// </summary>
+        public int Width { get; set; }
+
+        /// <summary>
+        /// Max bar count.
+        /// </summary>
+        const int MaxBars = 16;
+
+        /// <summary>
+        /// Maximum sample number for each bar.
+        /// </summary>
+        const int MaxSamples = 2560;
+
+        /// <summary>
+        /// Maximum nest calls for each bar.
+        /// </summary>
+        const int MaxNestCall = 32;
+
+        /// <summary>Maximum display frames.</summary>
+        const int MaxSampleFrames = 4;
+
+        /// <summary>
+        /// Duration (in frame count) for take snap shot of log.
+        /// </summary>
+        const int LogSnapDuration = 120;
+
+        /// <summary>
+        /// Padding(in pixels) of bar.
+        /// </summary>
+        const int BarPadding = 2;
+
+        /// <summary>
+        /// Delay frame count for auto display frame adjustment.
+        /// </summary>
+        const int AutoAdjustDelay = 30;
+
+        /// <summary>
+        /// Marker structure.
+        /// </summary>
+        public struct Marker
+        {
+            public int MarkerId;
+            public float BeginTime;
+            public float EndTime;
+            public Color Color;
+        }
+
+        /// <summary>
+        /// Collection of markers.
+        /// </summary>
+        public class MarkerCollection
+        {
+            // Marker collection.
+            public readonly Marker[] Markers = new Marker[MaxSamples];
+            public int MarkCount;
+
+            // Marker nest information.
+            public readonly int[] MarkerNests = new int[MaxNestCall];
+            public int NestCount;
+        }
+
+        /// <summary>
+        /// Frame logging information.
+        /// </summary>
+        public class FrameLog
+        {
+            public readonly MarkerCollection[] Bars;
+
+            public FrameLog()
+            {
+                // Initialize markers.
+                Bars = new MarkerCollection[MaxBars];
+                for (var i = 0; i < MaxBars; ++i)
+                    Bars[i] = new MarkerCollection();
+            }
+        }
+
+        /// <summary>
+        /// Marker information
+        /// </summary>
+        private class MarkerInfo
+        {
+            // Name of marker.
+            public readonly string Name;
+
+            // Marker log.
+            public readonly MarkerLog[] Logs = new MarkerLog[MaxBars];
+
+            public MarkerInfo(string name)
+            {
+                Name = name;
+            }
+        }
+
+        /// <summary>
+        /// Marker log information.
+        /// </summary>
+        private struct MarkerLog
+        {
+            //public float SnapMin;
+            //public float SnapMax;
+            public float SnapAvg;
+
+            public float Min;
+            public float Max;
+            public float Avg;
+
+            public int Samples;
+
+            public Color Color;
+
+            public bool Initialized;
+        }
+
+        // Logs for each frames.
+        FrameLog[] _logs;
+
+        // Previous frame log.
+        FrameLog _prevLog;
+
+        // Current log.
+        FrameLog _curLog;
+
+        public FrameLog PrevLog { get { return _prevLog; } }
+
+        // Current frame count.
+        int _frameCount;
+
+        // Stopwatch for measure the time.
+        readonly Stopwatch _stopwatch = new Stopwatch();
+
+        // Marker information array.
+        readonly List<MarkerInfo> _markers = new List<MarkerInfo>();
+
+        // Dictionary that maps from marker name to marker id.
+        readonly Dictionary<string, int> _markerNameToIdMap = new Dictionary<string, int>();
+
+        // Display frame adjust counter.
+        int _frameAdjust;
+
+        // Current display frame count.
+        int _sampleFrames;
+
+        // Marker log string.
+        readonly StringBuilder _logString = new StringBuilder(512);
+
+        // You want to call StartFrame at beginning of Game.Update method.
+        // But Game.Update gets calls multiple time when game runs slow in fixed time step mode.
+        // In this case, we should ignore StartFrame call.
+        // To do this, we just keep tracking of number of StartFrame calls until Draw gets called.
+        int _updateCount;
+
+        // TimerRuler draw position.
+        Vector2 _position;
+
+        /// <summary>
+        /// Start new frame.
+        /// </summary>
+        public void StartFrame()
+        {
+            lock (this)
+            {
+                // We skip reset frame when this method gets called multiple times.
+                var count = Interlocked.Increment(ref _updateCount);
+                if (Visible && (1 < count && count < MaxSampleFrames))
+                    return;
+
+                // Update current frame log.
+                _prevLog = _logs[_frameCount++ & 0x1];
+                _curLog = _logs[_frameCount & 0x1];
+
+                var endFrameTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+
+                // Update marker and create a log.
+                for (var barIdx = 0; barIdx < _prevLog.Bars.Length; ++barIdx)
                 {
-                    if (item.UpdateNumber > updateNumber)
+                    var prevBar = _prevLog.Bars[barIdx];
+                    var nextBar = _curLog.Bars[barIdx];
+
+                    // Re-open marker that didn't get called EndMark in previous frame.
+                    for (var nest = 0; nest < prevBar.NestCount; ++nest)
                     {
-                        t.WriteLine("Update " + item.UpdateNumber);
-                        updateNumber = item.UpdateNumber;
+                        var markerIdx = prevBar.MarkerNests[nest];
+
+                        prevBar.Markers[markerIdx].EndTime = endFrameTime;
+
+                        nextBar.MarkerNests[nest] = nest;
+                        nextBar.Markers[nest].MarkerId = prevBar.Markers[markerIdx].MarkerId;
+                        nextBar.Markers[nest].BeginTime = 0;
+                        nextBar.Markers[nest].EndTime = -1;
+                        nextBar.Markers[nest].Color = prevBar.Markers[markerIdx].Color;
                     }
-                    t.WriteLine(item.Stream.Name.PadLeft(maxStreamNameSize) + " | " + item.Content);
+
+                    // Update marker log.
+                    for (var markerIdx = 0; markerIdx < prevBar.MarkCount; ++markerIdx)
+                    {
+                        var duration = prevBar.Markers[markerIdx].EndTime -
+                                            prevBar.Markers[markerIdx].BeginTime;
+
+                        var markerId = prevBar.Markers[markerIdx].MarkerId;
+                        var m = _markers[markerId];
+
+                        m.Logs[barIdx].Color = prevBar.Markers[markerIdx].Color;
+
+                        if (!m.Logs[barIdx].Initialized)
+                        {
+                            // First frame process.
+                            m.Logs[barIdx].Min = duration;
+                            m.Logs[barIdx].Max = duration;
+                            m.Logs[barIdx].Avg = duration;
+
+                            m.Logs[barIdx].Initialized = true;
+                        }
+                        else
+                        {
+                            // Process after first frame.
+                            m.Logs[barIdx].Min = Math.Min(m.Logs[barIdx].Min, duration);
+                            m.Logs[barIdx].Max = Math.Min(m.Logs[barIdx].Max, duration);
+                            m.Logs[barIdx].Avg += duration;
+                            m.Logs[barIdx].Avg *= 0.5f;
+
+                            if (m.Logs[barIdx].Samples++ >= LogSnapDuration)
+                            {
+                                //m.Logs[barIdx].SnapMin = m.Logs[barIdx].Min;
+                                //m.Logs[barIdx].SnapMax = m.Logs[barIdx].Max;
+                                m.Logs[barIdx].SnapAvg = m.Logs[barIdx].Avg;
+                                m.Logs[barIdx].Samples = 0;
+                            }
+                        }
+                    }
+
+                    nextBar.MarkCount = prevBar.NestCount;
+                    nextBar.NestCount = prevBar.NestCount;
                 }
-                t.Close();
+
+                // Start measuring.
+                _stopwatch.Reset();
+                _stopwatch.Start();
             }
         }
 
-        private StreamItem SearchStream(String name)
+        /// <summary>
+        /// Start measure time.
+        /// </summary>
+        /// <param name="markerName">name of marker.</param>
+        /// <param name="color">color</param>
+        public void BeginMark(string markerName, Color color)
         {
-            foreach (var streamItem in Streams)
-            {
-                if (streamItem.Name == name)
-                    return streamItem;
-            }
-            return null;
+            BeginMark(0, markerName, color);
         }
 
         /// <summary>
-        /// Logs a formatted string to the specified stream.
+        /// Start measure time.
         /// </summary>
-        /// <param name="streamName">Stream to log to</param>
-        /// <param name="format">The format string</param>
-        /// <param name="arg0">The first format parameter</param>
-        public void Log(String streamName, String format, Object arg0) { Log(streamName, String.Format(format, arg0)); }
-        /// <summary>
-        /// Logs a formatted string to the specified stream.
-        /// </summary>
-        /// <param name="streamName">Stream to log to</param>
-        /// <param name="format">The format string</param>
-        /// <param name="arg0">The first format parameter</param>
-        /// <param name="arg1">The second format parameter</param>
-        public void Log(String streamName, String format, Object arg0, Object arg1) { Log(streamName, String.Format(format, arg0, arg1)); }
-        /// <summary>
-        /// Logs a formatted string to the specified stream.
-        /// </summary>
-        /// <param name="streamName">Stream to log to</param>
-        /// <param name="format">The format string</param>
-        /// <param name="arg0">The first format parameter</param>
-        /// <param name="arg1">The second format parameter</param>
-        /// <param name="arg2">The third format parameter</param>
-        public void Log(String streamName, String format, Object arg0, Object arg1, Object arg2) { Log(streamName, String.Format(format, arg0, arg1, arg2)); }
-        /// <summary>
-        /// Logs a formatted string to the specified stream.
-        /// </summary>
-        /// <param name="streamName">Stream to log to</param>
-        /// <param name="format">The format string</param>
-        /// <param name="arg0">The format parameters</param>
-        public void Log(String streamName, String format, params Object[] args) { Log(streamName, String.Format(format, args)); }
-
-        /// <summary>
-        /// Los a message to the specified stream.
-        /// </summary>
-        /// <param name="streamName">Name of the Stream to log the message to</param>
-        /// <param name="message">Message to log</param>
-        public void Log(String streamName, String message)
+        /// <param name="barIndex">index of bar</param>
+        /// <param name="markerName">name of marker.</param>
+        /// <param name="color">color</param>
+        public void BeginMark(int barIndex, string markerName, Color color)
         {
-            StreamItem stream = SearchStream(streamName);
-            // Is it a new stream?
-            if (stream == null)
-            {
-                stream = new StreamItem() {
-                    Enabled = !Config.HiddenStreams.Contains(streamName),
-                    Name = streamName,
-                    Color = colors[(currentColor++)]
-                };
-                stream.PropertyChanged += new PropertyChangedEventHandler(stream_PropertyChanged);
-                Streams.Add(stream);
+                lock (this)
+                {
+                    if (barIndex < 0 || barIndex >= MaxBars)
+                        throw new ArgumentOutOfRangeException("barIndex");
 
-                // Repeat the colors.
-                if (currentColor >= colors.Length)
-                    currentColor = 0;
-            }
+                    var bar = _curLog.Bars[barIndex];
 
-            // Log even if the stream is disabled.
-            var logItem = new LogItem { Stream = stream, Content = message, UpdateNumber = GearsetResources.Console.UpdateCount };
-            LogItems.Enqueue(logItem);
+                    if (bar.MarkCount >= MaxSamples)
+                    {
+                        throw new OverflowException("Exceeded sample count.\n" + "Either set larger number to TimeRuler.MaxSmpale or" + "lower sample count.");
+                    }
 
-            if (stream.Enabled)
-                scrollViewer.ScrollToEnd();
+                    if (bar.NestCount >= MaxNestCall)
+                    {
+                        throw new OverflowException("Exceeded nest count.\n" + "Either set larget number to TimeRuler.MaxNestCall or" + "lower nest calls.");
+                    }
+
+                    // Gets registered marker.
+                    int markerId;
+                    if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
+                    {
+                        // Register this if this marker is not registered.
+                        markerId = _markers.Count;
+                        _markerNameToIdMap.Add(markerName, markerId);
+                        _markers.Add(new MarkerInfo(markerName));
+                    }
+
+                    // Start measuring.
+                    bar.MarkerNests[bar.NestCount++] = bar.MarkCount;
+
+                    // Fill marker parameters.
+                    bar.Markers[bar.MarkCount].MarkerId = markerId;
+                    bar.Markers[bar.MarkCount].Color = color;
+                    bar.Markers[bar.MarkCount].BeginTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+
+                    bar.Markers[bar.MarkCount].EndTime = -1;
+
+                    bar.MarkCount++;
+                }
         }
 
         /// <summary>
-        /// Logs the specified message in the default stream.
+        /// End measuring.
         /// </summary>
-        /// <param name="content">The message to log.</param>
-        public void Log(String message)
+        /// <param name="markerName">Name of marker.</param>
+        public void EndMark(string markerName)
         {
-            LogItems.Enqueue(new LogItem { Stream = defaultStream, Content = message, UpdateNumber = GearsetResources.Console.UpdateCount });
+            EndMark(0, markerName);
         }
 
-        private Visual GetDescendantByType(Visual element, Type type)
+        /// <summary>
+        /// End measuring.
+        /// </summary>
+        /// <param name="barIndex">Index of bar.</param>
+        /// <param name="markerName">Name of marker.</param>
+        public void EndMark(int barIndex, string markerName)
         {
-            if (element == null) return null;
-            if (element.GetType() == type) return element;
-            Visual foundElement = null;
-            if (element is FrameworkElement)
+            lock (this)
             {
-                (element as FrameworkElement).ApplyTemplate();
-            }
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
-            {
-                Visual visual = VisualTreeHelper.GetChild(element, i) as Visual;
-                foundElement = GetDescendantByType(visual, type);
-                if (foundElement != null)
-                    break;
-            }
-            return foundElement;
-        } 
+                if (barIndex < 0 || barIndex >= MaxBars)
+                    throw new ArgumentOutOfRangeException("barIndex");
 
-        void stream_PropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            filteredView.Refresh();
-            if (e.PropertyName == "Enabled")
-            {
-                StreamItem stream = sender as StreamItem;
-                if (stream == null) return;
+                var bar = _curLog.Bars[barIndex];
 
-                if (stream.Enabled && Config.HiddenStreams.Contains(stream.Name))
-                    Config.HiddenStreams.Remove(stream.Name);
-                else if (!stream.Enabled && !(Config.HiddenStreams.Contains(stream.Name)))
-                    Config.HiddenStreams.Add(stream.Name);
+                if (bar.NestCount <= 0)
+                    throw new InvalidOperationException("Call BeingMark method before call EndMark method.");
+
+                int markerId;
+                if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
+                    throw new InvalidOperationException(String.Format("Maker '{0}' is not registered." + "Make sure you specifed same name as you used for BeginMark" + " method.", markerName));
+
+                var markerIdx = bar.MarkerNests[--bar.NestCount];
+                if (bar.Markers[markerIdx].MarkerId != markerId)
+                {
+                    throw new InvalidOperationException("Incorrect call order of BeginMark/EndMark method." + "You call it like BeginMark(A), BeginMark(B), EndMark(B), EndMark(A)" +
+                            " But you can't call it like " + "BeginMark(A), BeginMark(B), EndMark(A), EndMark(B).");
+                }
+
+                bar.Markers[markerIdx].EndTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
             }
         }
 
-        
+        /// <summary>
+        /// Get average time of given bar index and marker name.
+        /// </summary>
+        /// <param name="barIndex">Index of bar</param>
+        /// <param name="markerName">name of marker</param>
+        /// <returns>average spending time in ms.</returns>
+        public float GetAverageTime(int barIndex, string markerName)
+        {
+            if (barIndex < 0 || barIndex >= MaxBars)
+                throw new ArgumentOutOfRangeException("barIndex");
+
+            float result = 0;
+            int markerId;
+            if (_markerNameToIdMap.TryGetValue(markerName, out markerId))
+                result = _markers[markerId].Logs[barIndex].Avg;
+
+            return result;
+        }
+
+        /// <summary>
+        /// Reset marker log.
+        /// </summary>
+        [Conditional("PROFILE")]
+        public void ResetLog()
+        {
+            lock (this)
+            {
+                foreach (var markerInfo in _markers)
+                {
+                    for (var i = 0; i < markerInfo.Logs.Length; ++i)
+                    {
+                        markerInfo.Logs[i].Initialized = false;
+                        markerInfo.Logs[i].SnapAvg = 0;
+
+                        markerInfo.Logs[i].Min = 0;
+                        markerInfo.Logs[i].Max = 0;
+                        markerInfo.Logs[i].Avg = 0;
+
+                        markerInfo.Logs[i].Samples = 0;
+                    }
+                }
+            }
+        }
     }
 }
