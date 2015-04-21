@@ -20,7 +20,8 @@ namespace Gearset.Components
             : base (GearsetSettings.Instance.BenderConfig)
         {
             Window = new CurveEditorWindow();
-            Window.Show();
+            if (Config.Visible)
+                Window.Show();
 
             curveTreeViewModel = new CurveTreeViewModel(Window.curveEditorControl);
 
@@ -31,7 +32,7 @@ namespace Gearset.Components
             Window.Width = Config.Width;
             Window.Height = Config.Height;
             Window.IsVisibleChanged += new System.Windows.DependencyPropertyChangedEventHandler(Window_IsVisibleChanged);
-
+            
 
             //Curve c1 = new Curve();
             //AddCurve("MyObject.X", c1);
