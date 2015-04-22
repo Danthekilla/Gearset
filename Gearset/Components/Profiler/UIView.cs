@@ -19,6 +19,8 @@ namespace Gearset.Components.Profiler
 #else
     {
 #endif
+        protected readonly Profiler Profiler;
+
         bool _visible;
 
         /// <summary>
@@ -45,8 +47,6 @@ namespace Gearset.Components.Profiler
         }
 
         internal event EventHandler VisibleChanged;
-
-        protected readonly Profiler Profiler;
 
         internal ObservableCollection<Profiler.LevelItem> Levels = new ObservableCollection<Profiler.LevelItem>();
 
