@@ -17,10 +17,10 @@ namespace Gearset.Components.Profiler
         public double Height { get; internal set; }
 
         [InspectorIgnore]
-        public Vector2 PerformaceGraphPosition { get; internal set; }
+        public Vector2 PerformanceGraphPosition { get; internal set; }
 
         [InspectorIgnore]
-        public Vector2 PerformaceGraphSize { get; internal set; }
+        public Vector2 PerformanceGraphSize { get; internal set; }
 
         [InspectorIgnore]
         public List<String> HiddenStreams { get; internal set; }
@@ -35,7 +35,7 @@ namespace Gearset.Components.Profiler
 
             HiddenStreams = new List<string>();
 
-            PerformaceGraphSize = new Vector2(100, 60);
+            PerformanceGraphSize = new Vector2(100, 60);
         }
     }
 }

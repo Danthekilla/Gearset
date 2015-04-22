@@ -57,6 +57,12 @@ namespace Gearset.Components.Profiler
         int _c;
         internal void Draw(InternalLabeler labeler, Profiler.FrameLog frameLog)
         {
+            if (Visible == false)
+            {
+                labeler.HideLabel("__performanceGraph");
+                return;
+            }
+
             DrawBorderLines(Color.Gray);//, _lineDrawer);
             //if (TitleBar.IsMouseOver)
             //    TitleBar.DrawBorderLines(Color.White);//, _lineDrawer);

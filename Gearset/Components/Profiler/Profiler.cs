@@ -194,15 +194,14 @@ namespace Gearset.Components.Profiler
                 _logs[i] = new FrameLog();
 
             TimeRuler = new TimeRuler(TargetSampleFrames = 1, Vector2.Zero, new Vector2(GearsetResources.Device.Viewport.Width, 10));
-            PerformanceGraph = new PerformanceGraph(TargetSampleFrames = 1, Config.PerformaceGraphPosition, Config.PerformaceGraphSize);
+            PerformanceGraph = new PerformanceGraph(TargetSampleFrames = 1, Config.PerformanceGraphPosition, Config.PerformanceGraphSize);
             PerformanceGraph.Dragged += (object sender, ref Vector2 args) => { 
-                Config.PerformaceGraphPosition = PerformanceGraph.Position; 
+                Config.PerformanceGraphPosition = PerformanceGraph.Position; 
             };
 
             PerformanceGraph.ScaleNob.Dragged += (object sender, ref Vector2 args) => { 
-                Config.PerformaceGraphSize = PerformanceGraph.Size; 
+                Config.PerformanceGraphSize = PerformanceGraph.Size; 
             };
-            
         }
 
         void ProfilerIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -477,8 +476,7 @@ namespace Gearset.Components.Profiler
             if (TimeRuler.Visible)
                 TimeRuler.Draw(_prevLog);
 
-            if (PerformanceGraph.Visible)
-                PerformanceGraph.Draw(_internalLabeler, _prevLog);
+            PerformanceGraph.Draw(_internalLabeler, _prevLog);
         }
     }
 }
