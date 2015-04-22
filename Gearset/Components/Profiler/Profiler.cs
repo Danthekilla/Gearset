@@ -9,6 +9,9 @@ namespace Gearset.Components.Profiler
 {
     public class Profiler : Gear
     {
+        //The number of 
+        public const int MaxLevels = 16;
+
         internal ProfilerWindow Window { get; private set; }
 
         public TimeRuler TimeRuler { get; private set; }
@@ -18,38 +21,22 @@ namespace Gearset.Components.Profiler
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
-        /// <summary>
-        /// Gets/Set log display or no.
-        /// </summary>
-        public bool ShowLog { get; set; }
+        //Settings the game can use for Profiling scenarios (e.g. to test if CPU/GPU bound)
+        public bool Sleep { get; set; }
+        public bool SkipUpdate { get; set; }
 
         /// <summary>
         /// Gets/Sets target sample frames.
         /// </summary>
-        public int TargetSampleFrames { get; set; }
+        public int TargetSampleFrames { get; set; }        
 
         /// <summary>
-        /// Gets/Sets TimeRuler rendering position.
-        /// </summary>
-        public Vector2 Position { get; set; }
-
-        /// <summary>
-        /// Gets/Sets timer ruler width.
-        /// </summary>
-        public int Width { get; set; }
-
-        /// <summary>
-        /// Max bar count.
-        /// </summary>
-        const int MaxBars = 16;
-
-        /// <summary>
-        /// Maximum sample number for each bar.
+        /// Maximum sample number for each level.
         /// </summary>
         const int MaxSamples = 2560;
 
         /// <summary>
-        /// Maximum nest calls for each bar.
+        /// Maximum nest calls for each level.
         /// </summary>
         const int MaxNestCall = 32;
 
@@ -91,14 +78,14 @@ namespace Gearset.Components.Profiler
         /// </summary>
         internal class FrameLog
         {
-            public readonly MarkerCollection[] Bars;
+            public readonly MarkerCollection[] Levels;
 
             public FrameLog()
             {
                 // Initialize markers.
-                Bars = new MarkerCollection[MaxBars];
-                for (var i = 0; i < MaxBars; ++i)
-                    Bars[i] = new MarkerCollection();
+                Levels = new MarkerCollection[MaxLevels];
+                for (var i = 0; i < MaxLevels; ++i)
+                    Levels[i] = new MarkerCollection();
             }
         }
 
@@ -111,7 +98,7 @@ namespace Gearset.Components.Profiler
             public readonly string Name;
 
             // Marker log.
-            public readonly MarkerLog[] Logs = new MarkerLog[MaxBars];
+            public readonly MarkerLog[] Logs = new MarkerLog[MaxLevels];
 
             public MarkerInfo(string name)
             {
@@ -158,7 +145,7 @@ namespace Gearset.Components.Profiler
         // Dictionary that maps from marker name to marker id.
         readonly Dictionary<string, int> _markerNameToIdMap = new Dictionary<string, int>();
 
-        private InternalLabeler _internalLabeler = new InternalLabeler();
+        readonly InternalLabeler _internalLabeler = new InternalLabeler();
 
         // You want to call StartFrame at beginning of Game.Update method.
         // But Game.Update gets calls multiple time when game runs slow in fixed time step mode.
@@ -167,8 +154,21 @@ namespace Gearset.Components.Profiler
         int _updateCount;
 
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
-        {            
-            // Create the window.
+        {
+            CreateProfilerWindow();
+
+            Children.Add(_internalLabeler);
+
+            _logs = new FrameLog[2];
+            for (var i = 0; i < _logs.Length; ++i)
+                _logs[i] = new FrameLog();
+
+            CreateTimeRuler();
+            CreatePerformanceGraph();
+        }
+
+        void CreateProfilerWindow()
+        {
             Window = new ProfilerWindow
             {
                 Top = Config.Top,
@@ -186,21 +186,53 @@ namespace Gearset.Components.Profiler
 
             Window.LocationChanged += ProfilerLocationChanged;
             Window.SizeChanged += ProfilerSizeChanged;
+        }
 
-            Children.Add(_internalLabeler);
+        void CreateTimeRuler()
+        {
+            TargetSampleFrames = 1;
 
-            _logs = new FrameLog[2];
-            for (var i = 0; i < _logs.Length; ++i)
-                _logs[i] = new FrameLog();
+            var minSize = new Vector2(100, 16);
+            var size = Vector2.Max(minSize, Config.TimeRulerSize);
+            
+            TimeRuler = new TimeRuler(TargetSampleFrames, Config.TimeRulerPosition, size);
 
-            TimeRuler = new TimeRuler(TargetSampleFrames = 1, Vector2.Zero, new Vector2(GearsetResources.Device.Viewport.Width, 10));
-            PerformanceGraph = new PerformanceGraph(TargetSampleFrames = 1, Config.PerformanceGraphPosition, Config.PerformanceGraphSize);
-            PerformanceGraph.Dragged += (object sender, ref Vector2 args) => { 
-                Config.PerformanceGraphPosition = PerformanceGraph.Position; 
+            TimeRuler.Visible = Config.TimeRulerVisible;
+
+            TimeRuler.VisibleChanged += (sender, args) => { 
+                Config.TimeRulerVisible = TimeRuler.Visible; 
+            };
+            
+            TimeRuler.Dragged += (object sender, ref Vector2 args) => { 
+                Config.TimeRulerPosition = TimeRuler.Position; 
+            };
+            
+            TimeRuler.ScaleNob.Dragged += (object sender, ref Vector2 args) => { 
+                Config.TimeRulerSize = TimeRuler.Size; 
+            };
+        }
+
+        void CreatePerformanceGraph()
+        {
+            var minSize = new Vector2(100, 16);
+            var size = Vector2.Max(minSize, Config.PerformanceGraphSize);
+
+            PerformanceGraph = new PerformanceGraph(Config.PerformanceGraphPosition, size);
+
+            PerformanceGraph.Visible = Config.PerformanceGraphVisible;
+
+            PerformanceGraph.VisibleChanged += (sender, args) => {
+                Config.PerformanceGraphVisible = PerformanceGraph.Visible;
             };
 
-            PerformanceGraph.ScaleNob.Dragged += (object sender, ref Vector2 args) => { 
-                Config.PerformanceGraphSize = PerformanceGraph.Size; 
+            PerformanceGraph.Dragged += (object sender, ref Vector2 args) =>
+            {
+                Config.PerformanceGraphPosition = PerformanceGraph.Position;
+            };
+
+            PerformanceGraph.ScaleNob.Dragged += (object sender, ref Vector2 args) =>
+            {
+                Config.PerformanceGraphSize = PerformanceGraph.Size;
             };
         }
 
@@ -225,9 +257,6 @@ namespace Gearset.Components.Profiler
             _locationJustChanged = true;
         }
 
-        /// <summary>
-        /// Start new frame.
-        /// </summary>
         public void StartFrame()
         {
             lock (this)
@@ -244,63 +273,63 @@ namespace Gearset.Components.Profiler
                 var endFrameTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
 
                 // Update marker and create a log.
-                for (var barIdx = 0; barIdx < _prevLog.Bars.Length; ++barIdx)
+                for (var levelIdx = 0; levelIdx < _prevLog.Levels.Length; ++levelIdx)
                 {
-                    var prevBar = _prevLog.Bars[barIdx];
-                    var nextBar = _curLog.Bars[barIdx];
+                    var prevLevel = _prevLog.Levels[levelIdx];
+                    var nextLevel = _curLog.Levels[levelIdx];
 
                     // Re-open marker that didn't get called EndMark in previous frame.
-                    for (var nest = 0; nest < prevBar.NestCount; ++nest)
+                    for (var nest = 0; nest < prevLevel.NestCount; ++nest)
                     {
-                        var markerIdx = prevBar.MarkerNests[nest];
+                        var markerIdx = prevLevel.MarkerNests[nest];
 
-                        prevBar.Markers[markerIdx].EndTime = endFrameTime;
+                        prevLevel.Markers[markerIdx].EndTime = endFrameTime;
 
-                        nextBar.MarkerNests[nest] = nest;
-                        nextBar.Markers[nest].MarkerId = prevBar.Markers[markerIdx].MarkerId;
-                        nextBar.Markers[nest].BeginTime = 0;
-                        nextBar.Markers[nest].EndTime = -1;
-                        nextBar.Markers[nest].Color = prevBar.Markers[markerIdx].Color;
+                        nextLevel.MarkerNests[nest] = nest;
+                        nextLevel.Markers[nest].MarkerId = prevLevel.Markers[markerIdx].MarkerId;
+                        nextLevel.Markers[nest].BeginTime = 0;
+                        nextLevel.Markers[nest].EndTime = -1;
+                        nextLevel.Markers[nest].Color = prevLevel.Markers[markerIdx].Color;
                     }
 
                     // Update marker log.
-                    for (var markerIdx = 0; markerIdx < prevBar.MarkCount; ++markerIdx)
+                    for (var markerIdx = 0; markerIdx < prevLevel.MarkCount; ++markerIdx)
                     {
-                        var duration = prevBar.Markers[markerIdx].EndTime - prevBar.Markers[markerIdx].BeginTime;
-                        var markerId = prevBar.Markers[markerIdx].MarkerId;
+                        var duration = prevLevel.Markers[markerIdx].EndTime - prevLevel.Markers[markerIdx].BeginTime;
+                        var markerId = prevLevel.Markers[markerIdx].MarkerId;
                         var m = _markers[markerId];
 
-                        m.Logs[barIdx].Color = prevBar.Markers[markerIdx].Color;
+                        m.Logs[levelIdx].Color = prevLevel.Markers[markerIdx].Color;
 
-                        if (!m.Logs[barIdx].Initialized)
+                        if (!m.Logs[levelIdx].Initialized)
                         {
                             // First frame process.
-                            m.Logs[barIdx].Min = duration;
-                            m.Logs[barIdx].Max = duration;
-                            m.Logs[barIdx].Avg = duration;
+                            m.Logs[levelIdx].Min = duration;
+                            m.Logs[levelIdx].Max = duration;
+                            m.Logs[levelIdx].Avg = duration;
 
-                            m.Logs[barIdx].Initialized = true;
+                            m.Logs[levelIdx].Initialized = true;
                         }
                         else
                         {
                             // Process after first frame.
-                            m.Logs[barIdx].Min = Math.Min(m.Logs[barIdx].Min, duration);
-                            m.Logs[barIdx].Max = Math.Min(m.Logs[barIdx].Max, duration);
-                            m.Logs[barIdx].Avg += duration;
-                            m.Logs[barIdx].Avg *= 0.5f;
+                            m.Logs[levelIdx].Min = Math.Min(m.Logs[levelIdx].Min, duration);
+                            m.Logs[levelIdx].Max = Math.Min(m.Logs[levelIdx].Max, duration);
+                            m.Logs[levelIdx].Avg += duration;
+                            m.Logs[levelIdx].Avg *= 0.5f;
 
-                            if (m.Logs[barIdx].Samples++ >= LogSnapDuration)
+                            if (m.Logs[levelIdx].Samples++ >= LogSnapDuration)
                             {
-                                //m.Logs[barIdx].SnapMin = m.Logs[barIdx].Min;
-                                //m.Logs[barIdx].SnapMax = m.Logs[barIdx].Max;
-                                m.Logs[barIdx].SnapAvg = m.Logs[barIdx].Avg;
-                                m.Logs[barIdx].Samples = 0;
+                                //m.Logs[levelIdx].SnapMin = m.Logs[levelIdx].Min;
+                                //m.Logs[levelIdx].SnapMax = m.Logs[levelIdx].Max;
+                                m.Logs[levelIdx].SnapAvg = m.Logs[levelIdx].Avg;
+                                m.Logs[levelIdx].Samples = 0;
                             }
                         }
                     }
 
-                    nextBar.MarkCount = prevBar.NestCount;
-                    nextBar.NestCount = prevBar.NestCount;
+                    nextLevel.MarkCount = prevLevel.NestCount;
+                    nextLevel.NestCount = prevLevel.NestCount;
                 }
 
                 // Start measuring.
@@ -309,40 +338,25 @@ namespace Gearset.Components.Profiler
             }
         }
 
-        /// <summary>
-        /// Start measure time.
-        /// </summary>
-        /// <param name="markerName">name of marker.</param>
-        /// <param name="color">color</param>
         public void BeginMark(string markerName, Color color)
         {
             BeginMark(0, markerName, color);
         }
 
-        /// <summary>
-        /// Start measure time.
-        /// </summary>
-        /// <param name="barIndex">index of bar</param>
-        /// <param name="markerName">name of marker.</param>
-        /// <param name="color">color</param>
-        public void BeginMark(int barIndex, string markerName, Color color)
+        public void BeginMark(int levelIndex, string markerName, Color color)
         {
             lock (this)
             {
-                if (barIndex < 0 || barIndex >= MaxBars)
-                    throw new ArgumentOutOfRangeException("barIndex");
+                if (levelIndex < 0 || levelIndex >= MaxLevels)
+                    throw new ArgumentOutOfRangeException("levelIndex");
 
-                var bar = _curLog.Bars[barIndex];
+                var level = _curLog.Levels[levelIndex];
 
-                if (bar.MarkCount >= MaxSamples)
-                {
+                if (level.MarkCount >= MaxSamples)
                     throw new OverflowException("Exceeded sample count.\n" + "Either set larger number to TimeRuler.MaxSmpale or" + "lower sample count.");
-                }
 
-                if (bar.NestCount >= MaxNestCall)
-                {
+                if (level.NestCount >= MaxNestCall)
                     throw new OverflowException("Exceeded nest count.\n" + "Either set larget number to TimeRuler.MaxNestCall or" + "lower nest calls.");
-                }
 
                 // Gets registered marker.
                 int markerId;
@@ -355,83 +369,67 @@ namespace Gearset.Components.Profiler
                 }
 
                 // Start measuring.
-                bar.MarkerNests[bar.NestCount++] = bar.MarkCount;
+                level.MarkerNests[level.NestCount++] = level.MarkCount;
 
                 // Fill marker parameters.
-                bar.Markers[bar.MarkCount].MarkerId = markerId;
-                bar.Markers[bar.MarkCount].Color = color;
-                bar.Markers[bar.MarkCount].BeginTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+                level.Markers[level.MarkCount].MarkerId = markerId;
+                level.Markers[level.MarkCount].Color = color;
+                level.Markers[level.MarkCount].BeginTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+                level.Markers[level.MarkCount].EndTime = -1;
 
-                bar.Markers[bar.MarkCount].EndTime = -1;
-
-                bar.MarkCount++;
+                level.MarkCount++;
             }
         }
 
-        /// <summary>
-        /// End measuring.
-        /// </summary>
-        /// <param name="markerName">Name of marker.</param>
         public void EndMark(string markerName)
         {
             EndMark(0, markerName);
         }
 
-        /// <summary>
-        /// End measuring.
-        /// </summary>
-        /// <param name="barIndex">Index of bar.</param>
-        /// <param name="markerName">Name of marker.</param>
-        public void EndMark(int barIndex, string markerName)
+        public void EndMark(int levelIndex, string markerName)
         {
             lock (this)
             {
-                if (barIndex < 0 || barIndex >= MaxBars)
-                    throw new ArgumentOutOfRangeException("barIndex");
+                if (levelIndex < 0 || levelIndex >= MaxLevels)
+                    throw new ArgumentOutOfRangeException("levelIndex");
 
-                var bar = _curLog.Bars[barIndex];
+                var level = _curLog.Levels[levelIndex];
 
-                if (bar.NestCount <= 0)
+                if (level.NestCount <= 0)
                     throw new InvalidOperationException("Call BeingMark method before call EndMark method.");
 
                 int markerId;
                 if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
                     throw new InvalidOperationException(String.Format("Maker '{0}' is not registered." + "Make sure you specifed same name as you used for BeginMark" + " method.", markerName));
 
-                var markerIdx = bar.MarkerNests[--bar.NestCount];
-                if (bar.Markers[markerIdx].MarkerId != markerId)
-                {
-                    throw new InvalidOperationException("Incorrect call order of BeginMark/EndMark method." + "You call it like BeginMark(A), BeginMark(B), EndMark(B), EndMark(A)" +
-                            " But you can't call it like " + "BeginMark(A), BeginMark(B), EndMark(A), EndMark(B).");
-                }
-
-                bar.Markers[markerIdx].EndTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+                var markerIdx = level.MarkerNests[--level.NestCount];
+                if (level.Markers[markerIdx].MarkerId != markerId)
+                    throw new InvalidOperationException("Incorrect call order of BeginMark/EndMark method." + "You call it like BeginMark(A), BeginMark(B), EndMark(B), EndMark(A)" + " But you can't call it like " + "BeginMark(A), BeginMark(B), EndMark(A), EndMark(B).");
+                
+                level.Markers[markerIdx].EndTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
             }
         }
 
         /// <summary>
-        /// Get average time of given bar index and marker name.
+        /// Get average time of given level index and marker name.
         /// </summary>
-        /// <param name="barIndex">Index of bar</param>
+        /// <param name="levelIndex">Index of level</param>
         /// <param name="markerName">name of marker</param>
         /// <returns>average spending time in ms.</returns>
-        public float GetAverageTime(int barIndex, string markerName)
+        public float GetAverageTimeInMilliseconds(int levelIndex, string markerName)
         {
-            if (barIndex < 0 || barIndex >= MaxBars)
-                throw new ArgumentOutOfRangeException("barIndex");
+            if (levelIndex < 0 || levelIndex >= MaxLevels)
+                throw new ArgumentOutOfRangeException("levelIndex");
 
             float result = 0;
             int markerId;
             if (_markerNameToIdMap.TryGetValue(markerName, out markerId))
-                result = _markers[markerId].Logs[barIndex].Avg;
+                result = _markers[markerId].Logs[levelIndex].Avg;
 
             return result;
         }
 
-        /// <summary>
-        /// Reset marker log.
-        /// </summary>
-        public void ResetLog()
+        public void ResetMarkerLog()
         {
             lock (this)
             {
@@ -450,6 +448,14 @@ namespace Gearset.Components.Profiler
                     }
                 }
             }
+        }
+
+        public bool DoUpdate()
+        {
+            if (Sleep)
+                Thread.Sleep(1);
+
+            return !SkipUpdate;
         }
 
         public override void Update(GameTime gameTime)
@@ -473,9 +479,7 @@ namespace Gearset.Components.Profiler
             // Reset update count.
             Interlocked.Exchange(ref _updateCount, 0);
 
-            if (TimeRuler.Visible)
-                TimeRuler.Draw(_prevLog);
-
+            TimeRuler.Draw(_prevLog);
             PerformanceGraph.Draw(_internalLabeler, _prevLog);
         }
     }

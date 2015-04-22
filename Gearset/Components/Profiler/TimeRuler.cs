@@ -1,52 +1,14 @@
 ﻿using System;
-using System.ComponentModel;
 using Microsoft.Xna.Framework;
 
 namespace Gearset.Components.Profiler
 {
-    public class TimeRuler : UI.Window
-#if WINDOWS
-        , INotifyPropertyChanged
-    {
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged(String name)
-        {
-            if (PropertyChanged != null)
-                PropertyChanged(this, new PropertyChangedEventArgs(name));
-        }
-#else
-    {
-#endif
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this <see cref="TimeRuler"/> is visible.
-        /// </summary>
-        /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
-        public bool Visible
-        {
-            get
-            {
-                return visible;
-            }
-            set
-            {
-                visible = value;
-                if (VisibleChanged != null)
-                    VisibleChanged(this, EventArgs.Empty);
-#if WINDOWS
-                if (PropertyChanged != null)
-                    PropertyChanged(this, new PropertyChangedEventArgs("Visible"));
-#endif
-            }
-        }
-        private bool visible;
-
-        internal event EventHandler VisibleChanged;
-    
+    public class TimeRuler : UIView
+    {    
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
         /// <summary>
-        /// Height(in pixels) of bar.
+        /// Height(in pixels) of level.
         /// </summary>
         const int BarHeight = 8;
 
@@ -64,7 +26,7 @@ namespace Gearset.Components.Profiler
         const int MaxSampleFrames = 4;
 
         /// <summary>
-        /// Padding(in pixels) of bar.
+        /// Padding(in pixels) of level.
         /// </summary>
         const int BarPadding = 2;
 
@@ -81,24 +43,29 @@ namespace Gearset.Components.Profiler
 
         internal TimeRuler(int sampleFrames, Vector2 position, Vector2 size) : base(position, size)
         {
-            visible = true;
+            Visible = true;
             _sampleFrames = sampleFrames;
         }
 
         internal void Draw(Profiler.FrameLog frameLog)
         {
+            if (!Visible)
+                return;
+
             var width = Width;
 
-            // Adjust size and position based of number of bars we should draw.
+            // Adjust size and position based of number of levels we should draw.
             var height = 0;
             float maxTime = 0;
-            foreach (var bar in frameLog.Bars)
+            for (var levelId = 0; levelId < frameLog.Levels.Length; levelId++)
             {
-                if (bar.MarkCount <= 0)
+                var level = frameLog.Levels[levelId];
+
+                if (level.MarkCount <= 0 || DrawLevel(levelId) == false)
                     continue;
 
                 height += BarHeight + BarPadding * 2;
-                maxTime = Math.Max(maxTime, bar.Markers[bar.MarkCount - 1].EndTime);
+                maxTime = Math.Max(maxTime, level.Markers[level.MarkCount - 1].EndTime);
             }
 
             Size = new Vector2(width, height);
@@ -127,23 +94,29 @@ namespace Gearset.Components.Profiler
             var position = Position;
             GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + Size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
 
-            // Draw markers for each bars.
+            // Draw markers for each levels.
             var s = new Vector2(0, BarHeight);
             var y = position.Y;
-            foreach (var bar in frameLog.Bars)
+            for (var levelId = 0; levelId < frameLog.Levels.Length; levelId++)
             {
+                if (DrawLevel(levelId) == false)
+                    continue;
+
+                var level = frameLog.Levels[levelId];
+
                 position.Y = y + BarPadding;
-                if (bar.MarkCount > 0)
+                if (level.MarkCount > 0)
                 {
-                    for (var j = 0; j < bar.MarkCount; ++j)
+                    for (var j = 0; j < level.MarkCount; ++j)
                     {
-                        var bt = bar.Markers[j].BeginTime;
-                        var et = bar.Markers[j].EndTime;
-                        var sx = (int)(Position.X + bt * msToPs);
-                        var ex = (int)(Position.X + et * msToPs);
+                        var bt = level.Markers[j].BeginTime;
+                        var et = level.Markers[j].EndTime;
+                        var sx = (int) (Position.X + bt*msToPs);
+                        var ex = (int) (Position.X + et*msToPs);
                         position.X = sx;
                         s.X = Math.Max(ex - sx, 1);
-                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, bar.Markers[j].Color, bar.Markers[j].Color);
+                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s,
+                            level.Markers[j].Color, level.Markers[j].Color);
                     }
                 }
 

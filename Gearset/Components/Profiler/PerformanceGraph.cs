@@ -1,57 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
 namespace Gearset.Components.Profiler
 {
-    public class PerformanceGraph : UI.Window
-#if WINDOWS
-        , INotifyPropertyChanged
+    public class PerformanceGraph : UIView
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged(String name)
+        class Frame
         {
-            if (PropertyChanged != null)
-                PropertyChanged(this, new PropertyChangedEventArgs(name));
+            public readonly List<TimingInfo> TimingInfos = new List<TimingInfo>(16);
         }
-#else
-    {
-#endif
-        /// <summary>
-        /// Gets or sets a value indicating whether this <see cref="TimeRuler"/> is visible.
-        /// </summary>
-        /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
-        public bool Visible
+
+        struct TimingInfo
         {
-            get
+            public int Level;
+            public readonly float StartMilliseconds;
+            public readonly float EndMilliseconds;
+            public readonly Color Color;
+
+            internal TimingInfo(int level, float startMilliseconds, float endMilliseconds, Color color)
             {
-                return _visible;
-            }
-            set
-            {
-                _visible = value;
-                if (VisibleChanged != null)
-                    VisibleChanged(this, EventArgs.Empty);
-#if WINDOWS
-                if (PropertyChanged != null)
-                    PropertyChanged(this, new PropertyChangedEventArgs("Visible"));
-#endif
+                Level = level;
+                StartMilliseconds = startMilliseconds;
+                EndMilliseconds = endMilliseconds;
+                Color = color;
             }
         }
-        private bool _visible;
 
-        internal event EventHandler VisibleChanged;
-
-        const int MaxFrames = 40;
-        private readonly Queue<float> _timings = new Queue<float>(MaxFrames);
+        const int MaxFrames = 5;
+        private readonly Queue<Frame> _frames = new Queue<Frame>(MaxFrames);
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
-        internal PerformanceGraph(int sampleFrames, Vector2 position, Vector2 size) : base(position, size)
+        internal PerformanceGraph(Vector2 position, Vector2 size) : base(position, size)
         {
             for (var i = 0; i < MaxFrames; i++)
-                _timings.Enqueue(0);
+                _frames.Enqueue(new Frame());
         }
 
         int _c;
@@ -63,11 +46,10 @@ namespace Gearset.Components.Profiler
                 return;
             }
 
-            DrawBorderLines(Color.Gray);//, _lineDrawer);
-            //if (TitleBar.IsMouseOver)
-            //    TitleBar.DrawBorderLines(Color.White);//, _lineDrawer);
+            DrawBorderLines(Color.Gray);
+
             if (ScaleNob.IsMouseOver)
-                ScaleNob.DrawBorderLines(Color.Gray);//, _lineDrawer);
+                ScaleNob.DrawBorderLines(Color.Gray);
 
             labeler.ShowLabel("__performanceGraph", Position + new Vector2(0, -12), "Performance Graph");
             
@@ -76,50 +58,58 @@ namespace Gearset.Components.Profiler
             {
                 _c = 0;
 
-                if (_timings.Count == MaxFrames)
+                var bars = frameLog.Levels.Length;
+
+                if (_frames.Count == MaxFrames)
+                    _frames.Dequeue();
+
+                var frame = new Frame();
+                _frames.Enqueue(frame);
+
+                for (var barId = 0; barId < frameLog.Levels.Length; barId++)
                 {
-                    _timings.Dequeue();
-                    _timings.Dequeue();
+                    var bar = frameLog.Levels[barId];
+                    for (var j = 0; j < bar.MarkCount; ++j)
+                    {
+                        frame.TimingInfos.Add(new TimingInfo(
+                            barId,
+                            bar.Markers[j].BeginTime,
+                            bar.Markers[j].EndTime,
+                            bar.Markers[j].Color));
+                    }
                 }
-                _timings.Enqueue(frameLog.Bars[0].Markers[0].EndTime - frameLog.Bars[0].Markers[0].BeginTime);
-                _timings.Enqueue(frameLog.Bars[0].Markers[1].EndTime - frameLog.Bars[0].Markers[1].BeginTime);
             }
 
             const float frameSpan = 1.0f / 60.0f * 1000f;
 
             GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(Position, Position + Size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
 
-            // Compute factor that converts from ms to pixel.
             var msToPs = Height / frameSpan;
 
+            var barWidth = Width / MaxFrames;
+            var graphFloor = Position.Y + Size.Y;
+            var position = new Vector2(Position.X, graphFloor);
 
-            var barWidth = 2 * Width / MaxFrames;
-            var y = Position.Y + Size.Y;
-            var position = new Vector2(Position.X, y);
             var s = new Vector2(barWidth, msToPs);
-            var b = false;
-            foreach (var value in _timings)
+            foreach (var frame in _frames)
             {
-                
-                //if (value > 0)
-                //{
-                    s.Y = value * msToPs;
-                    position.Y -= s.Y;
-                    if (!b)
-                    {
-                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.Blue, Color.Blue);
-                    }
-                    else
-                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.Red, Color.Red);
-                //}    
-                    b = !b;
-                
-
-                if (!b)
+                foreach (var timeInfo in frame.TimingInfos)
                 {
-                    position.X += barWidth;
-                    position.Y = y;
+                    if (DrawLevel(timeInfo.Level) == false)
+                        continue;
+
+                    var durationMilliseconds = timeInfo.EndMilliseconds - timeInfo.StartMilliseconds;
+                    if (durationMilliseconds <= 0)
+                        continue;
+
+                    s.Y = -durationMilliseconds*msToPs;
+                    position.Y = graphFloor - (timeInfo.StartMilliseconds * msToPs);
+
+                    GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s,
+                        timeInfo.Color, timeInfo.Color);
                 }
+
+                position.X += barWidth;
             }
         }
     }
