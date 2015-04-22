@@ -23,12 +23,12 @@ namespace Gearset.Components.Profiler
         public int TargetSampleFrames { get; set; }
 
         /// <summary>Maximum display frames.</summary>
-        const int MaxSampleFrames = 4;
+        const int MaxSampleFrames = 1;
 
         /// <summary>
         /// Padding(in pixels) of level.
         /// </summary>
-        const int BarPadding = 2;
+        const int BarPadding = 1;
 
         /// <summary>
         /// Delay frame count for auto display frame adjustment.
@@ -51,11 +51,11 @@ namespace Gearset.Components.Profiler
         {
             if (!Visible)
                 return;
-
+                   
             var width = Width;
 
             // Adjust size and position based of number of levels we should draw.
-            var height = 0;
+            var height = BarPadding;
             float maxTime = 0;
             for (var levelId = 0; levelId < frameLog.Levels.Length; levelId++)
             {
@@ -64,11 +64,18 @@ namespace Gearset.Components.Profiler
                 if (level.MarkCount <= 0 || Levels[levelId].Enabled == false)
                     continue;
 
-                height += BarHeight + BarPadding * 2;
+                height += BarHeight + BarPadding;
                 maxTime = Math.Max(maxTime, level.Markers[level.MarkCount - 1].EndTime);
             }
 
+            height += BarPadding;
+
             Size = new Vector2(width, height);
+
+            DrawBorderLines(Color.Gray);
+
+            if (ScaleNob.IsMouseOver)
+                ScaleNob.DrawBorderLines(Color.Gray);
 
             // Auto display frame adjustment. If the entire process of frame doesn't finish in less than 16.6ms
             // then it will adjust display frame duration as 33.3ms.
@@ -89,13 +96,13 @@ namespace Gearset.Components.Profiler
             }
 
             // Compute factor that converts from ms to pixel.
-            var msToPs = width / sampleSpan;
+            var msToPs = (width - BarPadding * 2) / sampleSpan;
 
             var position = Position;
             GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + Size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
 
-            // Draw markers for each levels.
-            var s = new Vector2(0, BarHeight);
+            // Draw markers for each level.
+            var size = new Vector2(0, BarHeight);
             var y = position.Y;
             for (var levelId = 0; levelId < frameLog.Levels.Length; levelId++)
             {
@@ -111,12 +118,11 @@ namespace Gearset.Components.Profiler
                     {
                         var bt = level.Markers[j].BeginTime;
                         var et = level.Markers[j].EndTime;
-                        var sx = (int) (Position.X + bt*msToPs);
-                        var ex = (int) (Position.X + et*msToPs);
+                        var sx = (int) (BarPadding + Position.X + bt*msToPs);
+                        var ex = (int) (BarPadding + Position.X + et*msToPs);
                         position.X = sx;
-                        s.X = Math.Max(ex - sx, 1);
-                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s,
-                            level.Markers[j].Color, level.Markers[j].Color);
+                        size.X = Math.Max(ex - sx, 1);
+                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + size, level.Markers[j].Color, level.Markers[j].Color);
                     }
                 }
 
@@ -125,19 +131,19 @@ namespace Gearset.Components.Profiler
 
             // Draw grid lines (each one represents 1 ms of time)
             position = Position;
-            s = new Vector2(1, height);
+            size = new Vector2(1, height);
             for (var t = 1.0f; t < sampleSpan; t += 1.0f)
             {
                 position.X = (int)(Position.X + t * msToPs);
-                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.White, Color.White);
+                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + size, Color.Gray, Color.Gray);
             }
 
-            // Draw frame grid.
-            for (var i = 0; i <= _sampleFrames; ++i)
-            {
-                position.X = (int)(Position.X + frameSpan * i * msToPs);
-                GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.Green, Color.Green);
-            }
+            // Draw frame extents (start and end of a single frame).
+            //for (var i = 0; i <= _sampleFrames; ++i)
+            //{
+            //    position.X = (int)(Position.X + frameSpan * i * msToPs);
+            //    GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s, Color.Green, Color.Green);
+            //}
         }
     }
 }
