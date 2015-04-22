@@ -1,5 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Collections.ObjectModel;
+using System.Windows.Media;
 using Microsoft.Xna.Framework;
 
 namespace Gearset.Components.Profiler
@@ -17,6 +19,8 @@ namespace Gearset.Components.Profiler
 #else
     {
 #endif
+        bool _visible;
+
         /// <summary>
         /// Gets or sets a value indicating whether this <see cref="TimeRuler"/> is visible.
         /// </summary>
@@ -42,13 +46,29 @@ namespace Gearset.Components.Profiler
 
         internal event EventHandler VisibleChanged;
 
-        bool _visible;
+        protected readonly Profiler Profiler;
 
-        protected Profiler Profiler;
+        internal ObservableCollection<Profiler.LevelItem> Levels = new ObservableCollection<Profiler.LevelItem>();
 
         protected UIView(Profiler profiler, Vector2 position, Vector2 size) : base(position, size) 
         {
             Profiler = profiler;
+
+            var textColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 221, 221, 221));
+            for(var i = 0; i < Profiler.MaxLevels; i++)
+                Levels.Add(new Profiler.LevelItem { Name = "Level " + (i + 1), Enabled = true, Color = textColor });
+        }
+
+        public void EnableAllLevels()
+        {
+            foreach (var level in Levels)
+                level.Enabled = true;
+        }
+
+        public void DisableAllLevels()
+        {
+            foreach (var level in Levels)
+                level.Enabled = false;
         }
     }
 }

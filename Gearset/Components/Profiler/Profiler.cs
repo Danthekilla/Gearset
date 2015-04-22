@@ -181,8 +181,6 @@ namespace Gearset.Components.Profiler
 
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
         {
-            CreateProfilerWindow();
-
             Children.Add(_internalLabeler);
 
             _logs = new FrameLog[2];
@@ -191,6 +189,7 @@ namespace Gearset.Components.Profiler
 
             CreateTimeRuler();
             CreatePerformanceGraph();
+            CreateProfilerWindow();
         }
 
         void CreateProfilerWindow()
@@ -212,47 +211,11 @@ namespace Gearset.Components.Profiler
 
             Window.LocationChanged += ProfilerLocationChanged;
             Window.SizeChanged += ProfilerSizeChanged;
-
-            WpfTest();
+            
+            Window.trLevelsListBox.DataContext = TimeRuler.Levels;
+            Window.pgLevelsListBox.DataContext = PerformanceGraph.Levels;
         }
-
-        //----------------------------------------------------------------------------------------------------------------------------------------
-        internal ObservableCollection<LevelItem> Levels;
-
-        private readonly SolidColorBrush[] colors = { 
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 221, 221, 221)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 128, 200, 200)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 200, 200, 128)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 200, 128, 200)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 128, 128, 200)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 128, 200, 128)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 200, 128, 128)),
-            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 150, 110, 110)),
-        };
-
-        void WpfTest()
-        {
-            Levels = new ObservableCollection<LevelItem>();
-
-            for(var i = 0; i < MaxLevels; i++)
-                Levels.Add(new LevelItem { Name = "Level " + i, Enabled = true, Color = colors[0] });
-
-            Window.LevelsListBox.DataContext = Levels;
-        }
-
-        public void EnableAllLevels()
-        {
-            foreach (var level in Levels)
-                level.Enabled = true;
-        }
-
-        public void DisableAllLevels()
-        {
-            foreach (var level in Levels)
-                level.Enabled = false;
-        }
-        //----------------------------------------------------------------------------------------------------------------------------------------
-
+        
         void CreateTimeRuler()
         {
             TargetSampleFrames = 1;

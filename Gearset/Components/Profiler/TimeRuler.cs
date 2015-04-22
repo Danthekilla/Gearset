@@ -47,25 +47,6 @@ namespace Gearset.Components.Profiler
             _sampleFrames = sampleFrames;
         }
 
-        int _startLevelIndex;
-        int _endLevelIndex;
-        public int StartLevelIndex
-        {
-            get { return _startLevelIndex; }
-            set { _startLevelIndex = (int)MathHelper.Clamp(value, 0, Math.Min(_endLevelIndex, Profiler.MaxLevels - 1)); }
-        }
-
-        public int EndLevelIndex
-        {
-            get { return _endLevelIndex; }
-            set { _endLevelIndex = (int)MathHelper.Clamp(value, Math.Max(0, _startLevelIndex), Profiler.MaxLevels - 1); }
-        }
-
-        protected bool DrawLevel(int level)
-        {
-            return level >= _startLevelIndex && level <= _endLevelIndex;
-        }
-
         internal void Draw(Profiler.FrameLog frameLog)
         {
             if (!Visible)
@@ -80,7 +61,7 @@ namespace Gearset.Components.Profiler
             {
                 var level = frameLog.Levels[levelId];
 
-                if (level.MarkCount <= 0 || DrawLevel(levelId) == false)
+                if (level.MarkCount <= 0 || Levels[levelId].Enabled == false)
                     continue;
 
                 height += BarHeight + BarPadding * 2;
@@ -118,7 +99,7 @@ namespace Gearset.Components.Profiler
             var y = position.Y;
             for (var levelId = 0; levelId < frameLog.Levels.Length; levelId++)
             {
-                if (DrawLevel(levelId) == false)
+                if (Levels[levelId].Enabled == false)
                     continue;
 
                 var level = frameLog.Levels[levelId];

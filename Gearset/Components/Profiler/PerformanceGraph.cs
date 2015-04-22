@@ -55,7 +55,7 @@ namespace Gearset.Components.Profiler
             labeler.ShowLabel("__performanceGraph", Position + new Vector2(0, -12), "Performance Graph");
             
             _c++;
-            if (_c >= 10)
+            if (_c >= 0)
             {
                 _c = 0;
 
@@ -96,7 +96,7 @@ namespace Gearset.Components.Profiler
             {
                 foreach (var timeInfo in frame.TimingInfos)
                 {
-                    if (Profiler.Levels[timeInfo.Level].Enabled == false)
+                    if (Levels[timeInfo.Level].Enabled == false)
                         continue;
 
                     var durationMilliseconds = timeInfo.EndMilliseconds - timeInfo.StartMilliseconds;

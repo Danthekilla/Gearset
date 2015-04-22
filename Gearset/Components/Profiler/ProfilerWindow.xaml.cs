@@ -51,14 +51,24 @@ namespace Gearset.Components.Profiler
 
         }
 
-        private void EnableAllButton_Click(object sender, RoutedEventArgs e)
+        private void trEnableAllButton_Click(object sender, RoutedEventArgs e)
         {
-            GearsetResources.Console.Profiler.EnableAllLevels();
+            GearsetResources.Console.Profiler.TimeRuler.EnableAllLevels();
         }
 
-        private void DisableAllButton_Click(object sender, RoutedEventArgs e)
+        private void trDisableAllButton_Click(object sender, RoutedEventArgs e)
         {
-            GearsetResources.Console.Profiler.DisableAllLevels();
+            GearsetResources.Console.Profiler.TimeRuler.DisableAllLevels();
+        }
+
+        private void pgEnableAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            GearsetResources.Console.Profiler.PerformanceGraph.EnableAllLevels();
+        }
+
+        private void pgDisableAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            GearsetResources.Console.Profiler.PerformanceGraph.DisableAllLevels();
         }
     }
 
