@@ -51,14 +51,14 @@ namespace Gearset.Components.Profiler
 
         }
 
-        private void DisableAllButton_Click(object sender, RoutedEventArgs e)
-        {
-            GearsetResources.Console.Profiler.PerformanceGraph.Visible = !GearsetResources.Console.Profiler.PerformanceGraph.Visible;
-        }
-
         private void EnableAllButton_Click(object sender, RoutedEventArgs e)
         {
-            GearsetResources.Console.Profiler.TimeRuler.Visible = !GearsetResources.Console.Profiler.TimeRuler.Visible;
+            GearsetResources.Console.Profiler.EnableAllLevels();
+        }
+
+        private void DisableAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            GearsetResources.Console.Profiler.DisableAllLevels();
         }
     }
 

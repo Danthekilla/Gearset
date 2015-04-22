@@ -1,16 +1,42 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Windows;
+using System.Windows.Media;
 using Microsoft.Xna.Framework;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace Gearset.Components.Profiler
 {
     public class Profiler : Gear
     {
+        public class LevelItem : IComparable<LevelItem>, INotifyPropertyChanged
+        {
+            public String Name { get; set; }
+            public Boolean Enabled { get { return _enabled; } set { _enabled = value; OnPropertyChanged("Enabled"); } }
+
+            public Brush Color { get; set; }
+
+            private void OnPropertyChanged(string p)
+            {
+                if (PropertyChanged != null)
+                    PropertyChanged(this, new PropertyChangedEventArgs(p));
+            }
+            private Boolean _enabled = true;
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            public int CompareTo(LevelItem other)
+            {
+                return String.Compare(Name, other.Name, true, CultureInfo.InvariantCulture);
+            }
+        }
+
         //The number of 
-        public const int MaxLevels = 16;
+        public const int MaxLevels = 8;
 
         internal ProfilerWindow Window { get; private set; }
 
@@ -186,7 +212,46 @@ namespace Gearset.Components.Profiler
 
             Window.LocationChanged += ProfilerLocationChanged;
             Window.SizeChanged += ProfilerSizeChanged;
+
+            WpfTest();
         }
+
+        //----------------------------------------------------------------------------------------------------------------------------------------
+        internal ObservableCollection<LevelItem> Levels;
+
+        private readonly SolidColorBrush[] colors = { 
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 221, 221, 221)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 128, 200, 200)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 200, 200, 128)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 200, 128, 200)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 128, 128, 200)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 128, 200, 128)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 200, 128, 128)),
+            new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 150, 110, 110)),
+        };
+
+        void WpfTest()
+        {
+            Levels = new ObservableCollection<LevelItem>();
+
+            for(var i = 0; i < MaxLevels; i++)
+                Levels.Add(new LevelItem { Name = "Level " + i, Enabled = true, Color = colors[0] });
+
+            Window.LevelsListBox.DataContext = Levels;
+        }
+
+        public void EnableAllLevels()
+        {
+            foreach (var level in Levels)
+                level.Enabled = true;
+        }
+
+        public void DisableAllLevels()
+        {
+            foreach (var level in Levels)
+                level.Enabled = false;
+        }
+        //----------------------------------------------------------------------------------------------------------------------------------------
 
         void CreateTimeRuler()
         {
@@ -194,8 +259,8 @@ namespace Gearset.Components.Profiler
 
             var minSize = new Vector2(100, 16);
             var size = Vector2.Max(minSize, Config.TimeRulerSize);
-            
-            TimeRuler = new TimeRuler(TargetSampleFrames, Config.TimeRulerPosition, size);
+
+            TimeRuler = new TimeRuler(this, TargetSampleFrames, Config.TimeRulerPosition, size);
 
             TimeRuler.Visible = Config.TimeRulerVisible;
 
@@ -217,7 +282,7 @@ namespace Gearset.Components.Profiler
             var minSize = new Vector2(100, 16);
             var size = Vector2.Max(minSize, Config.PerformanceGraphSize);
 
-            PerformanceGraph = new PerformanceGraph(Config.PerformanceGraphPosition, size);
+            PerformanceGraph = new PerformanceGraph(this, Config.PerformanceGraphPosition, size);
 
             PerformanceGraph.Visible = Config.PerformanceGraphVisible;
 

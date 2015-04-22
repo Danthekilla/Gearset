@@ -9,7 +9,7 @@ namespace Gearset.Components
 {
     internal class SolidBoxDrawer : Gear
     {
-        private const int MaxBoxes = 500;
+        private const int MaxBoxes = 5000;
         private VertexPositionColorTexture[] Vertices;
         private int boxCount;
         public Texture2D noiseTexture;

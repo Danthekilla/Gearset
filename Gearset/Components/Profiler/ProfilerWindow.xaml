@@ -25,7 +25,7 @@
                     <!--LogItems inside group-->
                     <DataTemplate x:Key="logContentTemplate">
                         <TextBlock Name="textblock" Text="{Binding Path=Content}"
-                                               Foreground="{Binding Path=Stream.Color}"
+                                               Foreground="{Binding Path=Level.Color}"
                                                HorizontalAlignment="Stretch" MinWidth="200"/>
                         <DataTemplate.Triggers>
                             <DataTrigger Binding="{Binding Path=IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListViewItem}}}" Value="true">
@@ -34,8 +34,8 @@
                         </DataTemplate.Triggers>
                     </DataTemplate>
 
-                    <!--Streams-->
-                    <DataTemplate x:Key="streamTemplate" DataType="profiler:StreamItem">
+                    <!--Levels-->
+                    <DataTemplate x:Key="levelTemplate" DataType="profiler:LevelItem">
                         <DockPanel>
                             <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Path=Enabled}" Margin="0 0 5 0"/>
                             <TextBlock Text="{Binding Name}" Foreground="{Binding Color}">
@@ -99,7 +99,7 @@
         </DockPanel>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <!-- Streams -->
+                <!-- Levels -->
                 <ColumnDefinition Width="1*"/>
                 <!-- Splitter -->
                 <ColumnDefinition Width="Auto"/>
@@ -110,7 +110,7 @@
             <!--<Rectangle Fill="Red" Grid.Column="1"/>-->
             <GridSplitter Grid.Column="1" Background="{DynamicResource highlight1}" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch" />
 
-            <!-- Streams -->
+            <!-- Levels -->
             <DockPanel Grid.Column="0" Grid.Row="1">
                 <Border DockPanel.Dock="Top" BorderThickness="0 1 0 0" BorderBrush="{DynamicResource border1}">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
@@ -118,7 +118,7 @@
                         <Button Width="Auto" Name="DisableAllButton" Click="DisableAllButton_Click">Hide All</Button>
                     </StackPanel>
                 </Border>
-                <ListView Name="StreamListBox" ItemsSource="{Binding}" ItemTemplate="{StaticResource streamTemplate}" Background="Transparent" />
+                <ListView Name="LevelsListBox" ItemsSource="{Binding}" ItemTemplate="{StaticResource levelTemplate}" Background="Transparent" />
             </DockPanel>
 
             <!-- Logs -->

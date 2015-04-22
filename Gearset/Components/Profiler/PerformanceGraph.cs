@@ -26,12 +26,13 @@ namespace Gearset.Components.Profiler
             }
         }
 
-        const int MaxFrames = 5;
+        const int MaxFrames = 60;
+
         private readonly Queue<Frame> _frames = new Queue<Frame>(MaxFrames);
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
-        internal PerformanceGraph(Vector2 position, Vector2 size) : base(position, size)
+        internal PerformanceGraph(Profiler profiler, Vector2 position, Vector2 size) : base(profiler, position, size)
         {
             for (var i = 0; i < MaxFrames; i++)
                 _frames.Enqueue(new Frame());
@@ -95,7 +96,7 @@ namespace Gearset.Components.Profiler
             {
                 foreach (var timeInfo in frame.TimingInfos)
                 {
-                    if (DrawLevel(timeInfo.Level) == false)
+                    if (Profiler.Levels[timeInfo.Level].Enabled == false)
                         continue;
 
                     var durationMilliseconds = timeInfo.EndMilliseconds - timeInfo.StartMilliseconds;

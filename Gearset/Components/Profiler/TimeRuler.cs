@@ -41,10 +41,29 @@ namespace Gearset.Components.Profiler
         // Current display frame count.
         int _sampleFrames;
 
-        internal TimeRuler(int sampleFrames, Vector2 position, Vector2 size) : base(position, size)
+        internal TimeRuler(Profiler profiler, int sampleFrames, Vector2 position, Vector2 size) : base(profiler, position, size)
         {
             Visible = true;
             _sampleFrames = sampleFrames;
+        }
+
+        int _startLevelIndex;
+        int _endLevelIndex;
+        public int StartLevelIndex
+        {
+            get { return _startLevelIndex; }
+            set { _startLevelIndex = (int)MathHelper.Clamp(value, 0, Math.Min(_endLevelIndex, Profiler.MaxLevels - 1)); }
+        }
+
+        public int EndLevelIndex
+        {
+            get { return _endLevelIndex; }
+            set { _endLevelIndex = (int)MathHelper.Clamp(value, Math.Max(0, _startLevelIndex), Profiler.MaxLevels - 1); }
+        }
+
+        protected bool DrawLevel(int level)
+        {
+            return level >= _startLevelIndex && level <= _endLevelIndex;
         }
 
         internal void Draw(Profiler.FrameLog frameLog)
