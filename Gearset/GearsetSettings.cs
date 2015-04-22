@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gearset.Components.Profiler;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -52,6 +53,9 @@ namespace Gearset
         public BenderConfig BenderConfig { get; set; }
 #endif
 
+        [Inspector(FriendlyName = "Profiler", HideCantWriteIcon = true)]
+        public ProfilerConfig ProfilerConfig { get; internal set; }
+
         [Inspector(FriendlyName = "Overlaid Plots", HideCantWriteIcon = true)]
         public PlotterConfig PlotterConfig { get; internal set; }
 
@@ -83,6 +87,7 @@ namespace Gearset
             InspectorConfig = new Components.InspectorConfig();
             LoggerConfig = new Components.LoggerConfig();
 #endif
+            ProfilerConfig = new ProfilerConfig();
             DataSamplerConfig = new Components.DataSamplerConfig();
             PlotterConfig = new Components.PlotterConfig();
             TreeViewConfig = new Components.TreeViewConfig();
@@ -187,6 +192,9 @@ namespace Gearset
 
             if (Instance.PlotterConfig.HiddenPlots == null)
                 Instance.PlotterConfig.HiddenPlots = new List<string>();
+
+            if (Instance.ProfilerConfig == null)
+                Instance.ProfilerConfig = new ProfilerConfig();
         }
     }
 }

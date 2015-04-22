@@ -1,4 +1,5 @@
 #region Using Statements
+using Gearset.Components.Profiler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -216,6 +217,12 @@ namespace Gearset
         /// </summary>
         internal Finder Finder { get; private set; }
 #endif
+
+        /// <summary>
+        /// Code profiler.
+        /// </summary>
+        public Profiler Profiler { get; private set; }
+
         /// <summary>
         /// Gearset settings
         /// </summary>
@@ -367,6 +374,9 @@ namespace Gearset
 
             this.Labeler = new Labeler();
             this.Components.Add(Labeler);
+
+            this.Profiler = new Profiler();
+            this.Components.Add(Profiler);
 
             game.GraphicsDevice.DeviceReset += new EventHandler<EventArgs>(GraphicsDevice_DeviceReset);
         }
@@ -555,6 +565,7 @@ namespace Gearset
             webRequest.Proxy = WebRequest.GetSystemWebProxy();
             webRequest.Proxy.Credentials = CredentialCache.DefaultCredentials;
             webRequest.Credentials = CredentialCache.DefaultCredentials;
+
             try
             {
                 WebResponse response = webRequest.GetResponse();
@@ -1445,7 +1456,59 @@ namespace Gearset
         }
         #endregion
 
-        
+
+        #region Profiler
+        public void StartFrame()
+        {
+            if (!Enabled) return;
+            Profiler.StartFrame();
+        }
+
+        /// <summary>
+        /// Start measure time.
+        /// </summary>
+        /// <param name="markerName">name of marker.</param>
+        /// <param name="color">color</param>
+        public void BeginMark(string markerName, Color color)
+        {
+            if (!Enabled) return;
+            Profiler.BeginMark(markerName, color);
+        }
+
+        /// <summary>
+        /// Start measure time.
+        /// </summary>
+        /// <param name="barIndex">index of bar</param>
+        /// <param name="markerName">name of marker.</param>
+        /// <param name="color">color</param>
+        public void BeginMark(int barIndex, string markerName, Color color)
+        {
+            if (!Enabled) return;
+            Profiler.BeginMark(barIndex, markerName, color);
+        }
+
+        /// <summary>
+        /// End measuring.
+        /// </summary>
+        /// <param name="markerName">Name of marker.</param>
+        public void EndMark(string markerName)
+        {
+            if (!Enabled) return;
+            Profiler.EndMark(markerName);
+        }
+
+        /// <summary>
+        /// End measuring.
+        /// </summary>
+        /// <param name="barIndex">Index of bar.</param>
+        /// <param name="markerName">Name of marker.</param>
+        public void EndMark(int barIndex, string markerName)
+        {
+            if (!Enabled) return;
+            Profiler.EndMark(barIndex, markerName);
+        }
+        #endregion
+
         #endregion
 
         /// <summary>

@@ -142,6 +142,14 @@
     <Compile Include="Components\Common\NumericSpinner.xaml.cs">
       <DependentUpon>NumericSpinner.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Components\Profiler\UIView.cs" />
+    <Compile Include="Components\Profiler\PerformanceGraph.cs" />
+    <Compile Include="Components\Profiler\TimeRuler.cs" />
+    <Compile Include="Components\Profiler\Profiler.cs" />
+    <Compile Include="Components\Profiler\ProfilerConfig.cs" />
+    <Compile Include="Components\Profiler\ProfilerWindow.xaml.cs">
+      <DependentUpon>ProfilerWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Components\CSExpressionParser\CSExpression.cs" />
     <Compile Include="Components\Bender\Commands\ChangeTangentCommand.cs">
       <SubType>Code</SubType>
@@ -415,6 +423,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Components\Bender\CurveEditorWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Components\Profiler\ProfilerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
