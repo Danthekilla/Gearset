@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using Microsoft.Xna.Framework;
 
 namespace Gearset.Components.Profiler
@@ -12,7 +14,7 @@ namespace Gearset.Components.Profiler
 
         struct TimingInfo
         {
-            public int Level;
+            public readonly int Level;
             public readonly float StartMilliseconds;
             public readonly float EndMilliseconds;
             public readonly Color Color;
@@ -28,9 +30,38 @@ namespace Gearset.Components.Profiler
 
         const int MaxFrames = 60;
 
+        protected int FrameCounter;
+
         private readonly Queue<Frame> _frames = new Queue<Frame>(MaxFrames);
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
+
+        uint _skipFrames;
+
+        /// <summary>
+        /// Gets or sets a value indicating how often the frame sampling occurs.
+        /// </summary>
+        /// <remarks>0 to sample every frame, 10 to sample every 10th frame, etc.</remarks>
+        public uint SkipFrames
+        {
+            get
+            {
+                return _skipFrames;
+            }
+            set
+            {
+                _skipFrames = value;
+                if (SkipFramesChanged != null)
+                    SkipFramesChanged(this, EventArgs.Empty);
+                
+                #if WINDOWS
+                    if (SkipFramesChanged != null)
+                        SkipFramesChanged(this, new PropertyChangedEventArgs("SkipFrames"));
+                #endif
+            }
+        }
+
+        internal event EventHandler SkipFramesChanged;
 
         internal PerformanceGraph(Profiler profiler, Vector2 position, Vector2 size) : base(profiler, position, size)
         {
@@ -38,7 +69,6 @@ namespace Gearset.Components.Profiler
                 _frames.Enqueue(new Frame());
         }
 
-        int _c;
         internal void Draw(InternalLabeler labeler, Profiler.FrameLog frameLog)
         {
             if (Visible == false)
@@ -54,13 +84,12 @@ namespace Gearset.Components.Profiler
 
             labeler.ShowLabel("__performanceGraph", Position + new Vector2(0, -12), "Performance Graph");
             
-            _c++;
-            if (_c >= 0)
+            FrameCounter++;
+            if (FrameCounter > SkipFrames)
             {
-                _c = 0;
+                FrameCounter = 0;
 
-                var bars = frameLog.Levels.Length;
-
+                //TODO - reuse the frame object - probably with a circle buffer too.
                 if (_frames.Count == MaxFrames)
                     _frames.Dequeue();
 
