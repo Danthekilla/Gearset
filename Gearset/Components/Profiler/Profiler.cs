@@ -14,6 +14,9 @@ namespace Gearset.Components.Profiler
 {
     public class Profiler : Gear
     {
+        //Temp Box drawer for performance grid
+        internal TempBoxDrawer TempBoxDrawer = new TempBoxDrawer();
+
         public class LevelItem : IComparable<LevelItem>, INotifyPropertyChanged
         {
             public String Name { get; set; }
@@ -182,6 +185,7 @@ namespace Gearset.Components.Profiler
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
         {
             Children.Add(_internalLabeler);
+            Children.Add(TempBoxDrawer);
 
             _logs = new FrameLog[2];
             for (var i = 0; i < _logs.Length; ++i)
@@ -221,46 +225,51 @@ namespace Gearset.Components.Profiler
             TargetSampleFrames = 1;
 
             var minSize = new Vector2(100, 16);
-            var size = Vector2.Max(minSize, Config.TimeRulerSize);
+            var size = Vector2.Max(minSize, Config.TimeRulerConfig.Size);
 
-            TimeRuler = new TimeRuler(this, TargetSampleFrames, Config.TimeRulerPosition, size);
+            TimeRuler = new TimeRuler(this, TargetSampleFrames, Config.TimeRulerConfig.Position, size);
 
-            TimeRuler.Visible = Config.TimeRulerVisible;
+            TimeRuler.Visible = Config.TimeRulerConfig.Visible;
+            TimeRuler.VisibleLevelsMask = Config.TimeRulerConfig.VisibleLevelsMask;
 
             TimeRuler.VisibleChanged += (sender, args) => { 
-                Config.TimeRulerVisible = TimeRuler.Visible; 
+                Config.TimeRulerConfig.Visible = TimeRuler.Visible; 
             };
             
+            TimeRuler.LevelsEnabledChanged += (sender, args) => { 
+                Config.TimeRulerConfig.VisibleLevelsMask = TimeRuler.VisibleLevelsMask; 
+            };
+                        
             TimeRuler.Dragged += (object sender, ref Vector2 args) => { 
-                Config.TimeRulerPosition = TimeRuler.Position; 
+                Config.TimeRulerConfig.Position = TimeRuler.Position; 
             };
             
             TimeRuler.ScaleNob.Dragged += (object sender, ref Vector2 args) => { 
-                Config.TimeRulerSize = TimeRuler.Size; 
+                Config.TimeRulerConfig.Size = TimeRuler.Size; 
             };
         }
 
         void CreatePerformanceGraph()
         {
             var minSize = new Vector2(100, 16);
-            var size = Vector2.Max(minSize, Config.PerformanceGraphSize);
+            var size = Vector2.Max(minSize, Config.PerformanceGraphConfig.Size);
 
-            PerformanceGraph = new PerformanceGraph(this, Config.PerformanceGraphPosition, size);
+            PerformanceGraph = new PerformanceGraph(this, Config.PerformanceGraphConfig.Position, size);
 
-            PerformanceGraph.Visible = Config.PerformanceGraphVisible;
+            PerformanceGraph.Visible = Config.PerformanceGraphConfig.Visible;
 
             PerformanceGraph.VisibleChanged += (sender, args) => {
-                Config.PerformanceGraphVisible = PerformanceGraph.Visible;
+                Config.PerformanceGraphConfig.Visible = PerformanceGraph.Visible;
             };
 
             PerformanceGraph.Dragged += (object sender, ref Vector2 args) =>
             {
-                Config.PerformanceGraphPosition = PerformanceGraph.Position;
+                Config.PerformanceGraphConfig.Position = PerformanceGraph.Position;
             };
 
             PerformanceGraph.ScaleNob.Dragged += (object sender, ref Vector2 args) =>
             {
-                Config.PerformanceGraphSize = PerformanceGraph.Size;
+                Config.PerformanceGraphConfig.Size = PerformanceGraph.Size;
             };
         }
 

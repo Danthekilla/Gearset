@@ -122,7 +122,7 @@ namespace Gearset.Components.Profiler
                         var ex = (int) (BarPadding + Position.X + et*msToPs);
                         position.X = sx;
                         size.X = Math.Max(ex - sx, 1);
-                        GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + size, level.Markers[j].Color, level.Markers[j].Color);
+                        Profiler.TempBoxDrawer.ShowGradientBoxOnce(position, position + size, level.Markers[j].Color, level.Markers[j].Color);
                     }
                 }
 

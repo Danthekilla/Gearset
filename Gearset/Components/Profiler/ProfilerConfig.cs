@@ -20,18 +20,42 @@ namespace Gearset.Components.Profiler
         public List<String> HiddenStreams { get; internal set; }
 
         [InspectorIgnore]
-        public Vector2 TimeRulerPosition { get; internal set; }
-        [InspectorIgnore]
-        public Vector2 TimeRulerSize { get; internal set; }
-        [InspectorIgnore]
-        public bool TimeRulerVisible { get; internal set; }
+        public TimeRulerUIViewConfig TimeRulerConfig { get; internal set; }
 
         [InspectorIgnore]
-        public Vector2 PerformanceGraphPosition { get; internal set; }
-        [InspectorIgnore]
-        public Vector2 PerformanceGraphSize { get; internal set; }
-        [InspectorIgnore]
-        public bool PerformanceGraphVisible { get; internal set; }
+        public PerformanceGraphUIViewConfig PerformanceGraphConfig { get; internal set; }
+
+        [Serializable]
+        public class UIViewConfig
+        {
+            [InspectorIgnore]
+            public Vector2 Position { get; internal set; }
+
+            [InspectorIgnore]
+            public Vector2 Size { get; internal set; }
+
+            [InspectorIgnore]
+            public bool Visible { get; internal set; }
+
+            [InspectorIgnore]
+            public byte VisibleLevelsMask { get; internal set; }
+
+            public UIViewConfig()
+            {
+                Visible = true;
+                VisibleLevelsMask = 1;
+            }
+        }
+
+        [Serializable]
+        public class TimeRulerUIViewConfig : UIViewConfig { }
+
+        [Serializable]
+        public class PerformanceGraphUIViewConfig : UIViewConfig 
+        {
+            [InspectorIgnore]
+            public uint SkipFrames { get; internal set; }
+        }
 
         public ProfilerConfig()
         {
@@ -43,13 +67,20 @@ namespace Gearset.Components.Profiler
 
             HiddenStreams = new List<string>();
 
-            TimeRulerPosition = new Vector2(3, 3);
-            TimeRulerSize = new Vector2(400, 16);
-            TimeRulerVisible = true;
+            TimeRulerConfig = new TimeRulerUIViewConfig {
+                Position = new Vector2(3, 3), 
+                Size = new Vector2(400, 16), 
+                Visible = true,
+                VisibleLevelsMask = 1
+            };
 
-            PerformanceGraphPosition = new Vector2(3, 20);
-            PerformanceGraphSize = new Vector2(100, 60);
-            PerformanceGraphVisible = true;
+            PerformanceGraphConfig = new PerformanceGraphUIViewConfig {
+                Position = new Vector2(3, 20), 
+                Size = new Vector2(100, 60), 
+                Visible = true,
+                SkipFrames = 0,
+                VisibleLevelsMask = 1 | 2 | 4
+            };
         }
     }
 }

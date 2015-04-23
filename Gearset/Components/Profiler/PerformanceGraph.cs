@@ -28,7 +28,7 @@ namespace Gearset.Components.Profiler
             }
         }
 
-        const int MaxFrames = 6;
+        const int MaxFrames = 60;
 
         protected int FrameCounter;
 
@@ -135,8 +135,7 @@ namespace Gearset.Components.Profiler
                     s.Y = -durationMilliseconds*msToPs;
                     position.Y = graphFloor - (timeInfo.StartMilliseconds * msToPs);
 
-                    GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(position, position + s,
-                        timeInfo.Color, timeInfo.Color);
+                    Profiler.TempBoxDrawer.ShowGradientBoxOnce(position, position + s, timeInfo.Color, timeInfo.Color);
                 }
 
                 position.X += barWidth;

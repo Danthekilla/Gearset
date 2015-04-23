@@ -195,6 +195,12 @@ namespace Gearset
 
             if (Instance.ProfilerConfig == null)
                 Instance.ProfilerConfig = new ProfilerConfig();
+
+            if (Instance.ProfilerConfig.TimeRulerConfig == null)
+                Instance.ProfilerConfig.TimeRulerConfig = new ProfilerConfig.TimeRulerUIViewConfig();
+
+            if (Instance.ProfilerConfig.PerformanceGraphConfig == null)
+                Instance.ProfilerConfig.PerformanceGraphConfig = new ProfilerConfig.PerformanceGraphUIViewConfig();
         }
     }
 }
