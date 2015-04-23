@@ -39,12 +39,12 @@ namespace Gearset.Components.Profiler
         int _frameAdjust;
 
         // Current display frame count.
-        int _sampleFrames;
+        int _sampleFrames = 1;
 
-        internal TimeRuler(Profiler profiler, int sampleFrames, Vector2 position, Vector2 size) : base(profiler, position, size)
+        internal TimeRuler(Profiler profiler, ProfilerConfig.TimeRulerUIViewConfig uiviewConfig, Vector2 size, int targetSampleFrames)
+            : base(profiler, uiviewConfig, size)
         {
-            Visible = true;
-            _sampleFrames = sampleFrames;
+            TargetSampleFrames = targetSampleFrames;
         }
 
         internal void Draw(Profiler.FrameLog frameLog)

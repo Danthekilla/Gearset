@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -19,17 +18,25 @@ namespace Gearset.Components.Profiler
 
         public class LevelItem : IComparable<LevelItem>, INotifyPropertyChanged
         {
+            public int LevelId { get; private set; }
             public String Name { get; set; }
+
+            private Boolean _enabled = true;
             public Boolean Enabled { get { return _enabled; } set { _enabled = value; OnPropertyChanged("Enabled"); } }
 
             public Brush Color { get; set; }
+
+            public LevelItem(int levelId)
+            {
+                LevelId = levelId;
+            }
 
             private void OnPropertyChanged(string p)
             {
                 if (PropertyChanged != null)
                     PropertyChanged(this, new PropertyChangedEventArgs(p));
             }
-            private Boolean _enabled = true;
+            
             public event PropertyChangedEventHandler PropertyChanged;
 
             public int CompareTo(LevelItem other)
@@ -227,17 +234,16 @@ namespace Gearset.Components.Profiler
             var minSize = new Vector2(100, 16);
             var size = Vector2.Max(minSize, Config.TimeRulerConfig.Size);
 
-            TimeRuler = new TimeRuler(this, TargetSampleFrames, Config.TimeRulerConfig.Position, size);
+            TimeRuler = new TimeRuler(this, Config.TimeRulerConfig, size, TargetSampleFrames);
 
             TimeRuler.Visible = Config.TimeRulerConfig.Visible;
-            TimeRuler.VisibleLevelsMask = Config.TimeRulerConfig.VisibleLevelsMask;
 
             TimeRuler.VisibleChanged += (sender, args) => { 
                 Config.TimeRulerConfig.Visible = TimeRuler.Visible; 
             };
             
             TimeRuler.LevelsEnabledChanged += (sender, args) => { 
-                Config.TimeRulerConfig.VisibleLevelsMask = TimeRuler.VisibleLevelsMask; 
+                Config.TimeRulerConfig.VisibleLevelsFlags = TimeRuler.VisibleLevelsFlags; 
             };
                         
             TimeRuler.Dragged += (object sender, ref Vector2 args) => { 
@@ -254,12 +260,17 @@ namespace Gearset.Components.Profiler
             var minSize = new Vector2(100, 16);
             var size = Vector2.Max(minSize, Config.PerformanceGraphConfig.Size);
 
-            PerformanceGraph = new PerformanceGraph(this, Config.PerformanceGraphConfig.Position, size);
+            PerformanceGraph = new PerformanceGraph(this, Config.PerformanceGraphConfig, size);
 
             PerformanceGraph.Visible = Config.PerformanceGraphConfig.Visible;
 
             PerformanceGraph.VisibleChanged += (sender, args) => {
                 Config.PerformanceGraphConfig.Visible = PerformanceGraph.Visible;
+            };
+
+            PerformanceGraph.LevelsEnabledChanged += (sender, args) =>
+            {
+                Config.PerformanceGraphConfig.VisibleLevelsFlags = PerformanceGraph.VisibleLevelsFlags;
             };
 
             PerformanceGraph.Dragged += (object sender, ref Vector2 args) =>

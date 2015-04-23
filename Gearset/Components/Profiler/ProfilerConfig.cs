@@ -38,12 +38,12 @@ namespace Gearset.Components.Profiler
             public bool Visible { get; internal set; }
 
             [InspectorIgnore]
-            public byte VisibleLevelsMask { get; internal set; }
+            public int VisibleLevelsFlags { get; internal set; }
 
             public UIViewConfig()
             {
                 Visible = true;
-                VisibleLevelsMask = 1;
+                VisibleLevelsFlags = 1;
             }
         }
 
@@ -71,7 +71,7 @@ namespace Gearset.Components.Profiler
                 Position = new Vector2(3, 3), 
                 Size = new Vector2(400, 16), 
                 Visible = true,
-                VisibleLevelsMask = 1
+                VisibleLevelsFlags = 1
             };
 
             PerformanceGraphConfig = new PerformanceGraphUIViewConfig {
@@ -79,7 +79,7 @@ namespace Gearset.Components.Profiler
                 Size = new Vector2(100, 60), 
                 Visible = true,
                 SkipFrames = 0,
-                VisibleLevelsMask = 1 | 2 | 4
+                VisibleLevelsFlags = 1 | 2 | 4
             };
         }
     }

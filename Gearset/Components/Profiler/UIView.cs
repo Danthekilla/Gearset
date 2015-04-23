@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Windows.Media;
@@ -50,39 +49,28 @@ namespace Gearset.Components.Profiler
         internal event EventHandler VisibleChanged;
 
         internal ObservableCollection<Profiler.LevelItem> Levels = new ObservableCollection<Profiler.LevelItem>();
-        
-        protected UIView(Profiler profiler, Vector2 position, Vector2 size) : base(position, size) 
+
+        protected UIView(Profiler profiler, ProfilerConfig.UIViewConfig uiviewConfig, Vector2 size)
+            : base(uiviewConfig.Position, size) 
         {
             Profiler = profiler;
 
+            Visible = true;
+
             var textColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 221, 221, 221));
+
+            VisibleLevelsFlags = uiviewConfig.VisibleLevelsFlags;
 
             for(var i = 0; i < Profiler.MaxLevels; i++)
             {
-                var levelItem = new Profiler.LevelItem { Name = "Level " + (i + 1), Enabled = true, Color = textColor };
+                var levelItem = new Profiler.LevelItem(i) { Name = "Level " + (i + 1), Enabled = IsVisibleLevelsFlagSet(i), Color = textColor };
                 Levels.Add(levelItem);
 
                 levelItem.PropertyChanged += (sender, args) => { 
                     if (args.PropertyName == "Enabled")
-                        LevelsChanged();
+                        SyncVisibleLevelsFlags((Profiler.LevelItem)sender);
                 };
             }
-        }
-
-        void LevelsChanged() 
-        {
-            var visibleLevelsMask = (byte)0;
-            for (var levelId = 0; levelId < Levels.Count; levelId++)
-            {
-                var level = Levels[levelId];
-                if (level.Enabled) 
-                    visibleLevelsMask |= (byte)(1 << levelId);
-            }
-
-            _visibleLevelsMask = visibleLevelsMask;
-
-            if (LevelsEnabledChanged != null)
-                LevelsEnabledChanged(this, EventArgs.Empty);
         }
 
         internal event EventHandler LevelsEnabledChanged;
@@ -99,22 +87,30 @@ namespace Gearset.Components.Profiler
                 level.Enabled = false;
         }
 
-        byte _visibleLevelsMask;
-        public byte VisibleLevelsMask
+        public int VisibleLevelsFlags { get; private set; }
+
+        static int GetFlagFromLevelId(int levelId)
         {
-            get 
-            { 
-                return _visibleLevelsMask; 
-            }
-            set 
-            { 
-                _visibleLevelsMask = value;
-                for (var levelId = 0; levelId < Levels.Count; levelId++)
-                {
-                    var level = Levels[levelId];
-                    level.Enabled = (_visibleLevelsMask & (byte)(1 << levelId)) != 0;
-                }
-            }
+            return (1 << levelId);
+        }
+
+        bool IsVisibleLevelsFlagSet(int levelId)
+        {
+            var flag = GetFlagFromLevelId(levelId);
+            return (VisibleLevelsFlags & flag) != 0;
+        }
+
+        void SyncVisibleLevelsFlags(Profiler.LevelItem levelItem)
+        {
+            var flag = GetFlagFromLevelId(levelItem.LevelId);
+
+            if (levelItem.Enabled)
+                VisibleLevelsFlags |= flag;
+            else
+                VisibleLevelsFlags = VisibleLevelsFlags & ~flag;
+
+            if (LevelsEnabledChanged != null)
+                LevelsEnabledChanged(this, EventArgs.Empty);
         }
     }
 }

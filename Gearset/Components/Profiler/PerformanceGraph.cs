@@ -63,7 +63,7 @@ namespace Gearset.Components.Profiler
 
         internal event EventHandler SkipFramesChanged;
 
-        internal PerformanceGraph(Profiler profiler, Vector2 position, Vector2 size) : base(profiler, position, size)
+        internal PerformanceGraph(Profiler profiler, ProfilerConfig.UIViewConfig uiviewConfig, Vector2 size) : base(profiler, uiviewConfig, size)
         {
             for (var i = 0; i < MaxFrames; i++)
                 _frames.Enqueue(new Frame());
