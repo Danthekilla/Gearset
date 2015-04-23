@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Media;
 using Microsoft.Xna.Framework;
 using Color = Microsoft.Xna.Framework.Color;
@@ -145,9 +146,9 @@ namespace Gearset.Components.Profiler
         /// <summary>
         /// Marker log information.
         /// </summary>
-        private struct MarkerLog
+        public struct MarkerLog
         {
-            public float SnapAvg;
+            public float SnapAvg { get; set; }
 
             public float Min;
             public float Max;
@@ -155,9 +156,35 @@ namespace Gearset.Components.Profiler
 
             public int Samples;
 
-            public Color Color;
+            public Color Color { get; set; }
 
             public bool Initialized;
+
+            public string Name { get; set; }
+            public string Level { get; set; }
+        }
+
+        /// <summary>
+        /// Marker log information.
+        /// </summary>
+        public struct TimingLog
+        {
+            public float SnapAvg { get; set; }
+
+            public float Min;
+            public float Max;
+            public float Avg;
+
+            public int Samples;
+
+            public string Color { get; set; }
+            public System.Drawing.Color Fill { get; set; }
+            
+
+            public bool Initialized;
+
+            public string Name { get; set; }
+            public string Level { get; set; }
         }
 
         // Logs for each frames.
@@ -201,6 +228,33 @@ namespace Gearset.Components.Profiler
             CreateTimeRuler();
             CreatePerformanceGraph();
             CreateProfilerWindow();
+
+
+
+
+
+            //System.Drawing.ColorTranslator.FromHtml("Red");
+            var c = System.Drawing.ColorTranslator.FromWin32((int)Color.Red.PackedValue);
+            //var c = new System.Drawing.Color();
+            //c.
+            
+            List<TimingLog> items = new List<TimingLog>();
+            items.Add(new TimingLog { Name = "John Doe", SnapAvg = 3.14f, Level = "Level 1", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(192, 57, 43).PackedValue)) });
+            items.Add(new TimingLog { Name = "Jane Doe", SnapAvg = 0.1f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(52, 152, 219).PackedValue)) });
+            items.Add(new TimingLog { Name = "Sammy Doe", SnapAvg = 1.56f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(52, 152, 219).PackedValue)) });
+
+            Window.lvTimingSummary.ItemsSource = items;
+
+            var view = (CollectionView)CollectionViewSource.GetDefaultView(Window.lvTimingSummary.ItemsSource);
+            var groupDescription = new PropertyGroupDescription("Level");
+            view.GroupDescriptions.Add(groupDescription);
+
+
+
+
+
+
+
         }
 
         void CreateProfilerWindow()
