@@ -39,69 +39,9 @@
                     <DataTemplate x:Key="levelTemplate" DataType="profiler:LevelItem">
                         <DockPanel>
                             <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Path=Enabled}" Margin="0 0 5 0"/>
-                            <TextBlock Text="{Binding Name}" Foreground="{Binding Color}">
-                                <TextBlock.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Solo" Click="Solo_Click"/>
-                                    </ContextMenu>
-                                </TextBlock.ContextMenu>
-                            </TextBlock>
+                            <TextBlock Text="{Binding Name}" Foreground="{Binding Color}" />
                         </DockPanel>
                     </DataTemplate>
-
-                    <Style TargetType="{x:Type GridViewColumnHeader}">
-                        <Setter Property="Background" Value="{DynamicResource normal1}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource normalText1}"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="BorderBrush" Value="{DynamicResource normal1}" />
-                        <Setter Property="OverridesDefaultStyle" Value="false"/>
-                        <Setter Property="Height" Value="22"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="{x:Type GridViewColumnHeader}">
-                                    <Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
-                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="true">
-                                            <Setter Property="Background" TargetName="Bd" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
-                                            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
-                                        </Trigger>
-                                        <Trigger Property="IsEnabled" Value="false">
-                                            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-
-                    <Style TargetType="{x:Type ListViewItem}">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="{x:Type ListViewItem}">
-                                    <Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
-                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="true">
-                                            <Setter Property="Background" TargetName="Bd" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
-                                            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-
-                    
-
-                    <Style x:Key="timingsStyle" TargetType="{x:Type ListView}">
-                        <Setter Property="Foreground" Value="{DynamicResource normalText1}"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="ItemContainerStyle" Value="{StaticResource gridViewItemStyle}"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                    </Style>
                 </ResourceDictionary>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
@@ -157,11 +97,10 @@
                 <ColumnDefinition Width="2*"/>
                 <!-- Splitter -->
                 <ColumnDefinition Width="Auto"/>
-                <!-- Summary -->
+                <!-- Timing Summary Log -->
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
 
-            <!--<Rectangle Fill="Red" Grid.Column="1"/>-->
             <GridSplitter Grid.Column="1" Background="{DynamicResource highlight1}" Width="4" VerticalAlignment="Stretch" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch" />
 
             <TabControl Grid.Column="0">
@@ -211,47 +150,33 @@
                 </TabItem>
             </TabControl>
 
-            <ListView Name="lvTimingSummary" Grid.Column="2" Style="{StaticResource timingsStyle}">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Width="150">
-                            <GridViewColumnHeader Content="Name" />
-                            <GridViewColumn.CellTemplate>
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="5">
+                <ItemsControl Name="TimingItems">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="100" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle Grid.Column="0" Fill="{Binding Color}" Height="12" Width="12" Margin="0,0,10,0" HorizontalAlignment="Left" VerticalAlignment="Stretch"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{DynamicResource normalText1}"></TextBlock>
+                                <TextBlock  Grid.Column="2" Text="{Binding SnapAvg}" HorizontalAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    <ItemsControl.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Rectangle Fill="{Binding Color}" Height="12" Width="12" Margin="0,0,10,0" HorizontalAlignment="Left" VerticalAlignment="Stretch"/>
-                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource normalText1}"></TextBlock>
-                                    </StackPanel>
+                                    <TextBlock Foreground="White" Text="{Binding Path=Name}"/>
                                 </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                        <GridViewColumn Width="50">
-                            <GridViewColumnHeader Content="Time" />
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Time}" HorizontalAlignment="Right"></TextBlock>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                    </GridView>
-                </ListView.View>
-
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    </Style>
-                </ListView.ItemContainerStyle>
-
-                <ListView.GroupStyle>
-                    <GroupStyle>
-                        <GroupStyle.HeaderTemplate>
-                            <DataTemplate>
-                                <TextBlock FontWeight="Bold" Foreground="White" Text="{Binding Name}" Margin="10,0,0,0"/>
-                            </DataTemplate>
-                        </GroupStyle.HeaderTemplate>
-                    </GroupStyle>
-                </ListView.GroupStyle>
-            </ListView>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ItemsControl.GroupStyle>
+                </ItemsControl>
+            </ScrollViewer>
         </Grid>
     </Grid>
 

@@ -229,32 +229,27 @@ namespace Gearset.Components.Profiler
             CreatePerformanceGraph();
             CreateProfilerWindow();
 
-
-
-
-
             //System.Drawing.ColorTranslator.FromHtml("Red");
             var c = System.Drawing.ColorTranslator.FromWin32((int)Color.Red.PackedValue);
             //var c = new System.Drawing.Color();
             //c.
             
-            List<TimingLog> items = new List<TimingLog>();
-            items.Add(new TimingLog { Name = "John Doe", SnapAvg = 3.14f, Level = "Level 1", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(192, 57, 43).PackedValue)) });
-            items.Add(new TimingLog { Name = "Jane Doe", SnapAvg = 0.1f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(52, 152, 219).PackedValue)) });
-            items.Add(new TimingLog { Name = "Sammy Doe", SnapAvg = 1.56f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(52, 152, 219).PackedValue)) });
+            var items = new List<TimingLog>();
+            items.Add(new TimingLog { Name = "GameBase:Draw", SnapAvg = 0.6f, Level = "Level 1", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(192, 57, 43).PackedValue)) });
+            items.Add(new TimingLog { Name = "GameBase:Update", SnapAvg = 7.4f, Level = "Level 1", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(52, 152, 219).PackedValue)) });
+            items.Add(new TimingLog { Name = "OnDraw(gameTime)", SnapAvg = 3.14f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(211, 84, 0).PackedValue)) });
+            items.Add(new TimingLog { Name = "this.PostProcess.PostRender()", SnapAvg = 0.1f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(241, 196, 15).PackedValue)) });
+            items.Add(new TimingLog { Name = "Draw:base.Draw(gameTime)", SnapAvg = 1.56f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(46, 204, 113).PackedValue)) });
 
-            Window.lvTimingSummary.ItemsSource = items;
+            Window.TimingItems.ItemsSource = items;
 
-            var view = (CollectionView)CollectionViewSource.GetDefaultView(Window.lvTimingSummary.ItemsSource);
-            var groupDescription = new PropertyGroupDescription("Level");
-            view.GroupDescriptions.Add(groupDescription);
-
-
-
-
-
-
-
+            var view = (CollectionView)CollectionViewSource.GetDefaultView(Window.TimingItems.ItemsSource);
+            if (view.CanGroup)
+            {
+                var groupDescription = new PropertyGroupDescription("Level");
+                if (view.GroupDescriptions != null) 
+                    view.GroupDescriptions.Add(groupDescription);
+            }
         }
 
         void CreateProfilerWindow()
