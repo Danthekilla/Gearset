@@ -71,13 +71,14 @@ namespace Gearset.Components.Profiler
 
         internal void Draw(InternalLabeler labeler, Profiler.FrameLog frameLog)
         {
-            if (Visible == false)
+            if (Visible == false || Config.PerformanceGraphConfig.VisibleLevelsFlags == 0)
             {
                 labeler.HideLabel("__performanceGraph");
                 return;
             }
 
             DrawBorderLines(Color.Gray);
+            GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(Position, Position + Size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
 
             if (ScaleNob.IsMouseOver)
                 ScaleNob.DrawBorderLines(Color.Gray);
@@ -89,13 +90,19 @@ namespace Gearset.Components.Profiler
             {
                 FrameCounter = 0;
 
-                //TODO - reuse the frame object - probably with a circle buffer too.
+                //If the frame buffer has capacity will just create a new one; otherwise we'll pop the oldest off and use that.
+                Frame frame;
                 if (_frames.Count == MaxFrames)
-                    _frames.Dequeue();
+                {
+                    frame = _frames.Dequeue();
+                    frame.TimingInfos.Clear();
+                }
+                else
+                    frame = new Frame();
 
-                var frame = new Frame();
                 _frames.Enqueue(frame);
 
+                //Populate the frame metrics
                 for (var barId = 0; barId < frameLog.Levels.Length; barId++)
                 {
                     var bar = frameLog.Levels[barId];
@@ -111,8 +118,6 @@ namespace Gearset.Components.Profiler
             }
 
             const float frameSpan = 1.0f / 60.0f * 1000f;
-
-            GearsetResources.Console.SolidBoxDrawer.ShowGradientBoxOnce(Position, Position + Size, new Color(56, 56, 56, 150), new Color(16, 16, 16, 127));
 
             var msToPs = Height / frameSpan;
 

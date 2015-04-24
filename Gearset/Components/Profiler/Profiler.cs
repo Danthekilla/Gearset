@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Threading;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Xna.Framework;
 using Color = Microsoft.Xna.Framework.Color;
 
@@ -24,8 +24,6 @@ namespace Gearset.Components.Profiler
 
             private Boolean _enabled = true;
             public Boolean Enabled { get { return _enabled; } set { _enabled = value; OnPropertyChanged("Enabled"); } }
-
-            public Brush Color { get; set; }
 
             public LevelItem(int levelId)
             {
@@ -46,15 +44,26 @@ namespace Gearset.Components.Profiler
             }
         }
 
-        //The number of 
+        /// <summary>The maximum number of discrete heirarchical levels.</summary>
         public const int MaxLevels = 8;
+
+        /// <summary>Maximum sample number for each level. </summary>
+        const int MaxSamples = 2560;
+
+        /// <summary>Maximum nest calls for each level.</summary>
+        const int MaxNestCall = 32;
+
+        /// <summary>Maximum display frames.</summary>
+        const int MaxSampleFrames = 4;
+
+        internal string[] LevelNames = new string[MaxLevels];
 
         internal ProfilerWindow Window { get; private set; }
 
         public TimeRuler TimeRuler { get; private set; }
         public PerformanceGraph PerformanceGraph { get; private set; }
 
-        private bool _locationJustChanged;
+        private bool _prifilerWindowLocationChanged;
 
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
@@ -66,19 +75,6 @@ namespace Gearset.Components.Profiler
         /// Gets/Sets target sample frames.
         /// </summary>
         public int TargetSampleFrames { get; set; }        
-
-        /// <summary>
-        /// Maximum sample number for each level.
-        /// </summary>
-        const int MaxSamples = 2560;
-
-        /// <summary>
-        /// Maximum nest calls for each level.
-        /// </summary>
-        const int MaxNestCall = 32;
-
-        /// <summary>Maximum display frames.</summary>
-        const int MaxSampleFrames = 4;
 
         /// <summary>
         /// Duration (in frame count) for take snap shot of log.
@@ -167,22 +163,10 @@ namespace Gearset.Components.Profiler
         /// <summary>
         /// Marker log information.
         /// </summary>
-        public struct TimingLog
+        public struct TimingSummaryItem
         {
             public float SnapAvg { get; set; }
-
-            public float Min;
-            public float Max;
-            public float Avg;
-
-            public int Samples;
-
             public string Color { get; set; }
-            public System.Drawing.Color Fill { get; set; }
-            
-
-            public bool Initialized;
-
             public string Name { get; set; }
             public string Level { get; set; }
         }
@@ -216,6 +200,12 @@ namespace Gearset.Components.Profiler
         // To do this, we just keep tracking of number of StartFrame calls until Draw gets called.
         int _updateCount;
 
+        bool _refreshSummary = true;
+
+        //Circle buffer for WPF window summary - flip flop between two lists to break item source binding and force refresh
+        readonly List<TimingSummaryItem>[] _summaryItems = { new List<TimingSummaryItem>(), new List<TimingSummaryItem>() };
+        int _summaryLogId;
+
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
         {
             Children.Add(_internalLabeler);
@@ -225,31 +215,22 @@ namespace Gearset.Components.Profiler
             for (var i = 0; i < _logs.Length; ++i)
                 _logs[i] = new FrameLog();
 
+            GenerateLevelNames();
+
             CreateTimeRuler();
             CreatePerformanceGraph();
             CreateProfilerWindow();
+        }
 
-            //System.Drawing.ColorTranslator.FromHtml("Red");
-            var c = System.Drawing.ColorTranslator.FromWin32((int)Color.Red.PackedValue);
-            //var c = new System.Drawing.Color();
-            //c.
-            
-            var items = new List<TimingLog>();
-            items.Add(new TimingLog { Name = "GameBase:Draw", SnapAvg = 0.6f, Level = "Level 1", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(192, 57, 43).PackedValue)) });
-            items.Add(new TimingLog { Name = "GameBase:Update", SnapAvg = 7.4f, Level = "Level 1", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(52, 152, 219).PackedValue)) });
-            items.Add(new TimingLog { Name = "OnDraw(gameTime)", SnapAvg = 3.14f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(211, 84, 0).PackedValue)) });
-            items.Add(new TimingLog { Name = "this.PostProcess.PostRender()", SnapAvg = 0.1f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(241, 196, 15).PackedValue)) });
-            items.Add(new TimingLog { Name = "Draw:base.Draw(gameTime)", SnapAvg = 1.56f, Level = "Level 2", Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)new Color(46, 204, 113).PackedValue)) });
+        void GenerateLevelNames()
+        {
+            for(var i = 0; i < MaxLevels; i++)
+                LevelNames[i] = "Level " + (i + 1);
+        }
 
-            Window.TimingItems.ItemsSource = items;
-
-            var view = (CollectionView)CollectionViewSource.GetDefaultView(Window.TimingItems.ItemsSource);
-            if (view.CanGroup)
-            {
-                var groupDescription = new PropertyGroupDescription("Level");
-                if (view.GroupDescriptions != null) 
-                    view.GroupDescriptions.Add(groupDescription);
-            }
+        internal string GetLevelNameFromLevelId(int levelId)
+        {
+            return LevelNames[levelId];
         }
 
         void CreateProfilerWindow()
@@ -346,18 +327,20 @@ namespace Gearset.Components.Profiler
 
         void ProfilerSizeChanged(object sender, SizeChangedEventArgs e)
         {
-            _locationJustChanged = true;
+            _prifilerWindowLocationChanged = true;
         }
 
         void ProfilerLocationChanged(object sender, EventArgs e)
         {
-            _locationJustChanged = true;
+            _prifilerWindowLocationChanged = true;
         }
 
         public void StartFrame()
         {
             lock (this)
             {
+                _refreshSummary = false;
+
                 // We skip reset frame when this method gets called multiple times.
                 var count = Interlocked.Increment(ref _updateCount);
                 if (Visible && (1 < count && count < MaxSampleFrames))
@@ -417,6 +400,8 @@ namespace Gearset.Components.Profiler
 
                             if (m.Logs[levelIdx].Samples++ >= LogSnapDuration)
                             {
+                                _refreshSummary = true;
+
                                 //m.Logs[levelIdx].SnapMin = m.Logs[levelIdx].Min;
                                 //m.Logs[levelIdx].SnapMax = m.Logs[levelIdx].Max;
                                 m.Logs[levelIdx].SnapAvg = m.Logs[levelIdx].Avg;
@@ -561,9 +546,9 @@ namespace Gearset.Components.Profiler
 
         public override void Update(GameTime gameTime)
         {
-            if (_locationJustChanged)
+            if (_prifilerWindowLocationChanged)
             {
-                _locationJustChanged = false;
+                _prifilerWindowLocationChanged = false;
                 Config.Top = Window.Top;
                 Config.Left = Window.Left;
                 Config.Width = Window.Width;
@@ -582,6 +567,49 @@ namespace Gearset.Components.Profiler
 
             TimeRuler.Draw(_prevLog);
             PerformanceGraph.Draw(_internalLabeler, _prevLog);
+            RefreshTimingSummary();
+        }
+
+        void RefreshTimingSummary()
+        {
+            if (!Window.IsVisible || !_refreshSummary) 
+                return;
+
+            //Get the next buffer to use - this flip flopping forces the WPF list to refresh it's ItemSource
+            var summaryItems = _summaryItems[_summaryLogId++ % _summaryItems.Length];
+            summaryItems.Clear();
+
+            foreach (var markerInfo in _markers)
+            {
+                for (var i = 0; i < MaxLevels; ++i)
+                {
+                    if (!markerInfo.Logs[i].Initialized)
+                        continue;
+
+                    summaryItems.Add(new TimingSummaryItem
+                    {
+                        Name = markerInfo.Name,
+                        SnapAvg = markerInfo.Logs[i].SnapAvg,
+                        Level = GetLevelNameFromLevelId(i),
+                        Color = System.Drawing.ColorTranslator.ToHtml(System.Drawing.ColorTranslator.FromWin32((int)markerInfo.Logs[i].Color.PackedValue))
+                    });
+                }
+            }
+
+            //Update the Profiler window - this seems to do it in a threadsafe manner without causing spikes in the XNA game.
+            Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() => {
+                Window.TimingItems.ItemsSource = summaryItems;
+                var view = (CollectionView)CollectionViewSource.GetDefaultView(Window.TimingItems.ItemsSource);
+                if (!view.CanGroup) 
+                    return;
+
+                var groupDescription = new PropertyGroupDescription("Level");
+                if (view.GroupDescriptions == null) 
+                    return;
+
+                view.GroupDescriptions.Clear();
+                view.GroupDescriptions.Add(groupDescription);
+            }));
         }
     }
 }

@@ -49,7 +49,7 @@ namespace Gearset.Components.Profiler
 
         internal void Draw(Profiler.FrameLog frameLog)
         {
-            if (!Visible)
+            if (Visible == false || Config.TimeRulerConfig.VisibleLevelsFlags == 0)
                 return;
                    
             var width = Width;

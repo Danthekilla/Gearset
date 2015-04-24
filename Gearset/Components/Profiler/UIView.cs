@@ -57,13 +57,11 @@ namespace Gearset.Components.Profiler
 
             Visible = true;
 
-            var textColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 221, 221, 221));
-
             VisibleLevelsFlags = uiviewConfig.VisibleLevelsFlags;
 
             for(var i = 0; i < Profiler.MaxLevels; i++)
             {
-                var levelItem = new Profiler.LevelItem(i) { Name = "Level " + (i + 1), Enabled = IsVisibleLevelsFlagSet(i), Color = textColor };
+                var levelItem = new Profiler.LevelItem(i) { Name = Profiler.GetLevelNameFromLevelId(i), Enabled = IsVisibleLevelsFlagSet(i)};
                 Levels.Add(levelItem);
 
                 levelItem.PropertyChanged += (sender, args) => { 

@@ -1,3 +1,4 @@
+//#undef USE_GEARSET
 using System.Threading;
 using Gearset;
 using Microsoft.Xna.Framework;
@@ -72,9 +73,10 @@ namespace ProfilerTestGame
             GS.StartFrame();
             GS.BeginMark("Update", FlatTheme.PeterRiver);
 
-            GS.Plot("FPS", _fpsCounter.Fps);
-            GS.Plot("Total Memory K", _memoryMonitor.TotalMemoryK, 240);
-            GS.Plot("Tick Memory K", _memoryMonitor.TickMemoryK);
+            //Some nice plots...
+            //GS.Plot("FPS", _fpsCounter.Fps);
+            //GS.Plot("Total Memory K", _memoryMonitor.TotalMemoryK, 240);
+            //GS.Plot("Tick Memory K", _memoryMonitor.TickMemoryK);
 
 
             #if USE_GEARSET
@@ -86,10 +88,10 @@ namespace ProfilerTestGame
                 }   
             #endif
 
-            Thread.Sleep(1);
-            GS.EndMark("Update");
-
+            Thread.Sleep(1);//Let's trick the update into taking some time so that we can see some profile info
+            
             base.Update(gameTime);
+            GS.EndMark("Update");
         }
 
         /// <summary>
@@ -98,25 +100,27 @@ namespace ProfilerTestGame
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.White);
 
             GS.BeginMark("Draw", FlatTheme.Pomegrantate);
 
             GS.BeginMark(1, "Draw Background", FlatTheme.Pumpkin);
-            Thread.Sleep(1);
+            Thread.Sleep(1); //Let's trick the update into taking some time so that we can see some profile info
             GS.EndMark(1, "Draw Background");
 
             GS.BeginMark(1, "Draw Sprites", FlatTheme.Sunflower);
-            Thread.Sleep(3);
+            Thread.Sleep(3); //Let's trick the update into taking some time so that we can see some profile info
             GS.EndMark(1, "Draw Sprites");
 
             GS.BeginMark(1, "Draw Particles", FlatTheme.Sunflower);
-            Thread.Sleep(4);
+            Thread.Sleep(2); //Let's trick the update into taking some time so that we can see some profile info
             GS.EndMark(1, "Draw Particles");
 
-            GS.EndMark("Draw");
-
+            GS.BeginMark(1, "base.Draw", FlatTheme.Nephritis);
             base.Draw(gameTime);
+            GS.EndMark(1, "base.Draw");
+
+            GS.EndMark("Draw");
         }
     }
 }
