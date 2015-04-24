@@ -75,7 +75,7 @@ namespace Gearset.Components.Profiler
             for (var i = 0; i < MaxFrames; i++)
                 _frames.Enqueue(new Frame());
 
-            DisplayedFrameCount = 60;
+            DisplayedFrameCount = MaxFrames;
         }
 
         internal void Draw(InternalLabeler labeler, Profiler.FrameLog frameLog)

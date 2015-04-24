@@ -375,7 +375,11 @@ namespace Gearset
             this.Labeler = new Labeler();
             this.Components.Add(Labeler);
 
+#if WINDOWS
+            this.Profiler = new WindowsProfiler();
+#else
             this.Profiler = new Profiler();
+#endif
             this.Components.Add(Profiler);
 
             game.GraphicsDevice.DeviceReset += new EventHandler<EventArgs>(GraphicsDevice_DeviceReset);
