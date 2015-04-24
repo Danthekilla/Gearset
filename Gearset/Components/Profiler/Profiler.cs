@@ -549,6 +549,10 @@ namespace Gearset.Components.Profiler
 
         public bool DoUpdate()
         {
+            //If the sleep has no effect, I must be GPU bound.
+            //If skipping Update speeds things up, I must be CPU bound.
+            //If skipping Update has no effect but sleeping does slow things down, the two must be evenly balanced.
+
             if (Sleep)
                 Thread.Sleep(1);
 
