@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Data;
@@ -220,6 +221,11 @@ namespace Gearset.Components.Profiler
             CreateTimeRuler();
             CreatePerformanceGraph();
             CreateProfilerWindow();
+
+            //Throw the settings into Inspector
+            //var gearset = (GearsetComponent)Game.Components.FirstOrDefault(c => c.GetType() == typeof(GearsetComponent));
+            //if (gearset != null)
+            //    gearset.Console.Inspect("Profiler", new ProfilerInpectorSettings(this));
         }
 
         void GenerateLevelNames()

@@ -1,6 +1,7 @@
 //#undef USE_GEARSET
 using System.Threading;
 using Gearset;
+using Gearset.Components.Profiler;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -35,6 +36,8 @@ namespace ProfilerTestGame
             Components.Add(_memoryMonitor);
 
             base.Initialize();
+
+            GS.Action(()=>GS.GearsetComponent.Console.Inspect("Profiler", new ProfilerInpectorSettings(GS.GearsetComponent.Console.Profiler)));
         }
 
         /// <summary>

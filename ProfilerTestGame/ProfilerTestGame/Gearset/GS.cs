@@ -1197,6 +1197,14 @@ namespace Gearset
                 EnqueueAction((() => Console.EndMark(barIndex, markerName)));
         }
 
+        [Conditional("USE_GEARSET")]
+        public static void Action(Action action)
+        {
+            if (SameThread())
+                action();
+            else
+                EnqueueAction(action);
+        }
         #endregion
     }
 }

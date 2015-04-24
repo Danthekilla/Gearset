@@ -28,7 +28,14 @@ namespace Gearset.Components.Profiler
             }
         }
 
-        const int MaxFrames = 60;
+        internal const int MaxFrames = 120;
+
+        private uint _frameCount;
+        public uint DisplayedFrameCount
+        {
+            get { return _frameCount; }
+            set { _frameCount = (uint)MathHelper.Clamp(value, 0, MaxFrames); }
+        }
 
         protected int FrameCounter;
 
@@ -37,7 +44,7 @@ namespace Gearset.Components.Profiler
         public ProfilerConfig Config { get { return GearsetSettings.Instance.ProfilerConfig; } }
 
         uint _skipFrames;
-
+        
         /// <summary>
         /// Gets or sets a value indicating how often the frame sampling occurs.
         /// </summary>
@@ -67,6 +74,8 @@ namespace Gearset.Components.Profiler
         {
             for (var i = 0; i < MaxFrames; i++)
                 _frames.Enqueue(new Frame());
+
+            DisplayedFrameCount = 60;
         }
 
         internal void Draw(InternalLabeler labeler, Profiler.FrameLog frameLog)
@@ -121,13 +130,23 @@ namespace Gearset.Components.Profiler
 
             var msToPs = Height / frameSpan;
 
-            var barWidth = Width / MaxFrames;
+            //Only render the actual number of frames we are capturing - we may have space for e.g. 120 (2 seconds) but the user is only viewing 60 (1 second)
+            var barWidth = Width / DisplayedFrameCount;
             var graphFloor = Position.Y + Size.Y;
             var position = new Vector2(Position.X, graphFloor);
 
             var s = new Vector2(barWidth, msToPs);
+
+            //Set a pointer to the first frame to renders
+            var frameId = MaxFrames - DisplayedFrameCount;
             foreach (var frame in _frames)
             {
+                //Bail when we have drawn enough
+                if (frameId >= MaxFrames)
+                    break;
+                
+                frameId++;
+
                 foreach (var timeInfo in frame.TimingInfos)
                 {
                     if (Levels[timeInfo.Level].Enabled == false)
