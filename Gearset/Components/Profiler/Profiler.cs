@@ -194,6 +194,9 @@ namespace Gearset.Components.Profiler
         // To do this, we just keep tracking of number of StartFrame calls until Draw gets called.
         int _updateCount;
 
+        int _currentLevel = -1;
+        readonly Dictionary<string, int> _nameMap = new Dictionary<string, int>();
+
         protected IEnumerable<MarkerInfo> Markers { get { return _markers; } }
 
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
@@ -368,10 +371,20 @@ namespace Gearset.Components.Profiler
 
         public void BeginMark(string markerName, Color color)
         {
-            BeginMark(0, markerName, color);
+            //Look up the name in map or create a new level if this is a new name
+            int levelIndex;
+            if (_nameMap.ContainsKey(markerName)) {
+                levelIndex = _nameMap[markerName];
+            } else {
+                _currentLevel++;
+                levelIndex = _currentLevel;
+                _nameMap[markerName] = levelIndex;
+            }
+
+            BeginMark(levelIndex, markerName, color);
         }
 
-        public void BeginMark(int levelIndex, string markerName, Color color)
+        void BeginMark(int levelIndex, string markerName, Color color)
         {
             lock (this)
             {
@@ -411,10 +424,23 @@ namespace Gearset.Components.Profiler
 
         public void EndMark(string markerName)
         {
-            EndMark(0, markerName);
+            int levelIndex;
+            if (_nameMap.ContainsKey(markerName)) {
+                levelIndex = _nameMap[markerName];
+            } else {
+                //End called before Begin throw!
+                throw new InvalidOperationException("EndMark could not find name: " + markerName);
+            }
+
+            var nestLevels = EndMark(levelIndex, markerName);
+            if (nestLevels == 0)
+            {
+                _nameMap.Remove(markerName);
+                _currentLevel--;
+            }
         }
 
-        public void EndMark(int levelIndex, string markerName)
+        int EndMark(int levelIndex, string markerName)
         {
             lock (this)
             {
@@ -435,6 +461,8 @@ namespace Gearset.Components.Profiler
                     throw new InvalidOperationException("Incorrect call order of BeginMark/EndMark method." + "You call it like BeginMark(A), BeginMark(B), EndMark(B), EndMark(A)" + " But you can't call it like " + "BeginMark(A), BeginMark(B), EndMark(A), EndMark(B).");
                 
                 level.Markers[markerIdx].EndTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+
+                return level.NestCount;
             }
         }
 

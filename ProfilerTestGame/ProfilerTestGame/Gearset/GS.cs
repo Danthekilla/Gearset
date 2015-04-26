@@ -1150,24 +1150,9 @@ namespace Gearset
         public static void BeginMark(string markerName, Color color)
         {
             if (SameThread())
-                Console.BeginMark(0, markerName, color);
+                Console.BeginMark(markerName, color);
             else
                 EnqueueAction((() => Console.BeginMark(markerName, color)));
-        }
-
-        /// <summary>
-        /// Start measure time.
-        /// </summary>
-        /// <param name="barIndex">index of bar</param>
-        /// <param name="markerName">name of marker.</param>
-        /// <param name="color">color</param>
-        [Conditional("USE_GEARSET")]
-        public static void BeginMark(int barIndex, string markerName, Color color)
-        {
-            if (SameThread())
-                Console.BeginMark(barIndex, markerName, color);
-            else
-                EnqueueAction((() => Console.BeginMark(barIndex, markerName, color)));
         }
 
         /// <summary>
@@ -1178,23 +1163,9 @@ namespace Gearset
         public static void EndMark(string markerName)
         {
             if (SameThread())
-                Console.EndMark(0, markerName);
+                Console.EndMark(markerName);
             else
-                EnqueueAction((() => Console.EndMark(0, markerName)));
-        }
-
-        /// <summary>
-        /// End measuring.
-        /// </summary>
-        /// <param name="barIndex">Index of bar.</param>
-        /// <param name="markerName">Name of marker.</param>
-        [Conditional("USE_GEARSET")]
-        public static void EndMark(int barIndex, string markerName)
-        {
-            if (SameThread())
-                Console.EndMark(barIndex, markerName);
-            else
-                EnqueueAction((() => Console.EndMark(barIndex, markerName)));
+                EnqueueAction((() => Console.EndMark(markerName)));
         }
 
         [Conditional("USE_GEARSET")]

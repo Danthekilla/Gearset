@@ -1471,24 +1471,13 @@ namespace Gearset
         /// <summary>
         /// Start measure time.
         /// </summary>
+        /// <param name="barIndex">index of bar</param>
         /// <param name="markerName">name of marker.</param>
         /// <param name="color">color</param>
         public void BeginMark(string markerName, Color color)
         {
             if (!Enabled) return;
             Profiler.BeginMark(markerName, color);
-        }
-
-        /// <summary>
-        /// Start measure time.
-        /// </summary>
-        /// <param name="barIndex">index of bar</param>
-        /// <param name="markerName">name of marker.</param>
-        /// <param name="color">color</param>
-        public void BeginMark(int barIndex, string markerName, Color color)
-        {
-            if (!Enabled) return;
-            Profiler.BeginMark(barIndex, markerName, color);
         }
 
         /// <summary>
@@ -1499,17 +1488,6 @@ namespace Gearset
         {
             if (!Enabled) return;
             Profiler.EndMark(markerName);
-        }
-
-        /// <summary>
-        /// End measuring.
-        /// </summary>
-        /// <param name="barIndex">Index of bar.</param>
-        /// <param name="markerName">Name of marker.</param>
-        public void EndMark(int barIndex, string markerName)
-        {
-            if (!Enabled) return;
-            Profiler.EndMark(barIndex, markerName);
         }
         #endregion
 

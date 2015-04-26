@@ -7,7 +7,7 @@ namespace Gearset.Components.Profiler
     //TODO: Added this with a much bigger buffer and no noise texture - think we need a better solution going forward.
     internal class TempBoxDrawer : Gear
     {
-        private const int MaxBoxes = 5000;
+        private const int MaxBoxes = 6000;
         private readonly VertexPositionColor[] Vertices;
         private int boxCount;
         public Texture2D noiseTexture;

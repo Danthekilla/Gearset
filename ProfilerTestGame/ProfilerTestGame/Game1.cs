@@ -107,21 +107,25 @@ namespace ProfilerTestGame
 
             GS.BeginMark("Draw", FlatTheme.Pomegrantate);
 
-            GS.BeginMark(1, "Draw Background", FlatTheme.Pumpkin);
-            Thread.Sleep(1); //Let's trick the update into taking some time so that we can see some profile info
-            GS.EndMark(1, "Draw Background");
-
-            GS.BeginMark(1, "Draw Sprites", FlatTheme.Sunflower);
+            GS.BeginMark("Draw Background", FlatTheme.Pumpkin);
             Thread.Sleep(3); //Let's trick the update into taking some time so that we can see some profile info
-            GS.EndMark(1, "Draw Sprites");
+            GS.EndMark("Draw Background");
 
-            GS.BeginMark(1, "Draw Particles", FlatTheme.Sunflower);
+            //Test nesting
+            GS.BeginMark("Draw Sprites", FlatTheme.Sunflower);
             Thread.Sleep(2); //Let's trick the update into taking some time so that we can see some profile info
-            GS.EndMark(1, "Draw Particles");
+            GS.BeginMark("Draw Sprites", FlatTheme.Sunflower);
+            Thread.Sleep(2); //Let's trick the update into taking some time so that we can see some profile info
+            GS.EndMark("Draw Sprites");
+            GS.EndMark("Draw Sprites");
 
-            GS.BeginMark(1, "base.Draw", FlatTheme.Nephritis);
+            GS.BeginMark("Draw Particles", FlatTheme.Sunflower);
+            Thread.Sleep(2); //Let's trick the update into taking some time so that we can see some profile info
+            GS.EndMark("Draw Particles");
+
+            GS.BeginMark("base.Draw", FlatTheme.Nephritis);
             base.Draw(gameTime);
-            GS.EndMark(1, "base.Draw");
+            GS.EndMark("base.Draw");
 
             GS.EndMark("Draw");
         }
