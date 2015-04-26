@@ -199,7 +199,7 @@ namespace Gearset.Components.Profiler
 
         protected IEnumerable<MarkerInfo> Markers { get { return _markers; } }
 
-        object _locker = new object();
+        readonly object _locker = new object();
 
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
         {
