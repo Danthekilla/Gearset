@@ -199,6 +199,8 @@ namespace Gearset.Components.Profiler
 
         protected IEnumerable<MarkerInfo> Markers { get { return _markers; } }
 
+        object _locker = new object();
+
         public Profiler() : base(GearsetSettings.Instance.ProfilerConfig)
         {
             RefreshSummary = true;
@@ -286,7 +288,7 @@ namespace Gearset.Components.Profiler
 
         public void StartFrame()
         {
-            lock (this)
+            lock (_locker)
             {
                 RefreshSummary = false;
 
@@ -371,99 +373,99 @@ namespace Gearset.Components.Profiler
 
         public void BeginMark(string markerName, Color color)
         {
-            //Look up the name in map or create a new level if this is a new name
-            int levelIndex;
-            if (_nameMap.ContainsKey(markerName)) {
-                levelIndex = _nameMap[markerName];
-            } else {
-                _currentLevel++;
-                levelIndex = _currentLevel;
-                _nameMap[markerName] = levelIndex;
-            }
+            lock (_locker)
+            {
+                //Look up the name in map or create a new level if this is a new name
+                int levelIndex;
+                if (_nameMap.ContainsKey(markerName)) {
+                    levelIndex = _nameMap[markerName];
+                } else {
+                    _currentLevel++;
+                    levelIndex = _currentLevel;
+                    _nameMap[markerName] = levelIndex;
+                }
 
-            BeginMark(levelIndex, markerName, color);
+                BeginMark(levelIndex, markerName, color);
+            }
         }
 
         void BeginMark(int levelIndex, string markerName, Color color)
         {
-            lock (this)
+            if (levelIndex < 0 || levelIndex >= MaxLevels)
+                throw new ArgumentOutOfRangeException("levelIndex");
+
+            var level = _curLog.Levels[levelIndex];
+
+            if (level.MarkCount >= MaxSamples)
+                throw new OverflowException("Exceeded sample count.\n" + "Either set larger number to TimeRuler.MaxSmpale or" + "lower sample count.");
+
+            if (level.NestCount >= MaxNestCall)
+                throw new OverflowException("Exceeded nest count.\n" + "Either set larget number to TimeRuler.MaxNestCall or" + "lower nest calls.");
+
+            // Gets registered marker.
+            int markerId;
+            if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
             {
-                if (levelIndex < 0 || levelIndex >= MaxLevels)
-                    throw new ArgumentOutOfRangeException("levelIndex");
-
-                var level = _curLog.Levels[levelIndex];
-
-                if (level.MarkCount >= MaxSamples)
-                    throw new OverflowException("Exceeded sample count.\n" + "Either set larger number to TimeRuler.MaxSmpale or" + "lower sample count.");
-
-                if (level.NestCount >= MaxNestCall)
-                    throw new OverflowException("Exceeded nest count.\n" + "Either set larget number to TimeRuler.MaxNestCall or" + "lower nest calls.");
-
-                // Gets registered marker.
-                int markerId;
-                if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
-                {
-                    // Register this if this marker is not registered.
-                    markerId = _markers.Count;
-                    _markerNameToIdMap.Add(markerName, markerId);
-                    _markers.Add(new MarkerInfo(markerName));
-                }
-
-                // Start measuring.
-                level.MarkerNests[level.NestCount++] = level.MarkCount;
-
-                // Fill marker parameters.
-                level.Markers[level.MarkCount].MarkerId = markerId;
-                level.Markers[level.MarkCount].Color = color;
-                level.Markers[level.MarkCount].BeginTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
-                level.Markers[level.MarkCount].EndTime = -1;
-
-                level.MarkCount++;
+                // Register this if this marker is not registered.
+                markerId = _markers.Count;
+                _markerNameToIdMap.Add(markerName, markerId);
+                _markers.Add(new MarkerInfo(markerName));
             }
+
+            // Start measuring.
+            level.MarkerNests[level.NestCount++] = level.MarkCount;
+
+            // Fill marker parameters.
+            level.Markers[level.MarkCount].MarkerId = markerId;
+            level.Markers[level.MarkCount].Color = color;
+            level.Markers[level.MarkCount].BeginTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+            level.Markers[level.MarkCount].EndTime = -1;
+
+            level.MarkCount++;
         }
 
         public void EndMark(string markerName)
         {
-            int levelIndex;
-            if (_nameMap.ContainsKey(markerName)) {
-                levelIndex = _nameMap[markerName];
-            } else {
-                //End called before Begin throw!
-                throw new InvalidOperationException("EndMark could not find name: " + markerName);
-            }
-
-            var nestLevels = EndMark(levelIndex, markerName);
-            if (nestLevels == 0)
+            lock (_locker)
             {
-                _nameMap.Remove(markerName);
-                _currentLevel--;
+                int levelIndex;
+                if (_nameMap.ContainsKey(markerName)) {
+                    levelIndex = _nameMap[markerName];
+                } else {
+                    //End called before Begin throw!
+                    throw new InvalidOperationException("EndMark could not find name: " + markerName + ". Ensure you call BeginMark first.");
+                }
+
+                var nestLevels = EndMark(levelIndex, markerName);
+                if (nestLevels == 0)
+                {
+                    _nameMap.Remove(markerName);
+                    _currentLevel--;
+                }
             }
         }
 
         int EndMark(int levelIndex, string markerName)
-        {
-            lock (this)
-            {
-                if (levelIndex < 0 || levelIndex >= MaxLevels)
-                    throw new ArgumentOutOfRangeException("levelIndex");
+        { 
+            if (levelIndex < 0 || levelIndex >= MaxLevels)
+                throw new ArgumentOutOfRangeException("levelIndex");
 
-                var level = _curLog.Levels[levelIndex];
+            var level = _curLog.Levels[levelIndex];
 
-                if (level.NestCount <= 0)
-                    throw new InvalidOperationException("Call BeingMark method before call EndMark method.");
+            if (level.NestCount <= 0)
+                throw new InvalidOperationException("Call BeingMark method before call EndMark method.");
 
-                int markerId;
-                if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
-                    throw new InvalidOperationException(String.Format("Maker '{0}' is not registered." + "Make sure you specifed same name as you used for BeginMark" + " method.", markerName));
+            int markerId;
+            if (!_markerNameToIdMap.TryGetValue(markerName, out markerId))
+                throw new InvalidOperationException(String.Format("Maker '{0}' is not registered." + "Make sure you specifed same name as you used for BeginMark" + " method.", markerName));
 
-                var markerIdx = level.MarkerNests[--level.NestCount];
-                if (level.Markers[markerIdx].MarkerId != markerId)
-                    throw new InvalidOperationException("Incorrect call order of BeginMark/EndMark method." + "You call it like BeginMark(A), BeginMark(B), EndMark(B), EndMark(A)" + " But you can't call it like " + "BeginMark(A), BeginMark(B), EndMark(A), EndMark(B).");
+            var markerIdx = level.MarkerNests[--level.NestCount];
+            if (level.Markers[markerIdx].MarkerId != markerId)
+                throw new InvalidOperationException("Incorrect call order of BeginMark/EndMark method." + "You call it like BeginMark(A), BeginMark(B), EndMark(B), EndMark(A)" + " But you can't call it like " + "BeginMark(A), BeginMark(B), EndMark(A), EndMark(B).");
                 
-                level.Markers[markerIdx].EndTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
+            level.Markers[markerIdx].EndTime = (float)_stopwatch.Elapsed.TotalMilliseconds;
 
-                return level.NestCount;
-            }
+            return level.NestCount;
         }
 
         /// <summary>
@@ -487,7 +489,7 @@ namespace Gearset.Components.Profiler
 
         public void ResetMarkerLog()
         {
-            lock (this)
+            lock (_locker)
             {
                 foreach (var markerInfo in _markers)
                 {
